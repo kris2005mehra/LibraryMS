@@ -88,7 +88,7 @@ export default function Dashboard() {
             </h1>
             <p className="text-xl text-white/90 mb-4">Library Management System</p>
             <p className="text-lg text-white/80">
-              Welcome, {state.user?.name || 'User'}
+              Welcome To The LMS, {state.user?.name || 'NiT'}
             </p>
           </div>
         </div>
