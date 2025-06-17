@@ -21,6 +21,7 @@ export interface Book {
   totalCopies: number;
   addedDate: string;
   description?: string;
+  imageUrl?: string;
 }
 
 export interface Issue {

@@ -21,6 +21,7 @@ export default function Books() {
     year: new Date().getFullYear(),
     totalCopies: 1,
     description: '',
+    imageUrl: '',
   });
 
   const categories = [...new Set(state.books.map(book => book.category))];
@@ -98,6 +99,7 @@ export default function Books() {
       year: new Date().getFullYear(),
       totalCopies: 1,
       description: '',
+      imageUrl: '',
     });
     setSelectedBook(null);
   };
@@ -113,6 +115,7 @@ export default function Books() {
       year: book.year,
       totalCopies: book.totalCopies,
       description: book.description || '',
+      imageUrl: book.imageUrl || '',
     });
     setShowEditModal(true);
   };
@@ -169,6 +172,21 @@ export default function Books() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredBooks.map((book) => (
           <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow duration-200">
+            {/* Book Image */}
+            {book.imageUrl && (
+              <div className="h-48 overflow-hidden">
+                <img
+                  src={book.imageUrl}
+                  alt={book.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+            
             <div className="p-6">
               <div className="flex justify-between items-start mb-3">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">{book.title}</h3>
@@ -316,6 +334,16 @@ export default function Books() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    value={bookForm.imageUrl}
+                    onChange={(e) => setBookForm({ ...bookForm, imageUrl: e.target.value })}
+                    placeholder="https://example.com/book-image.jpg"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
@@ -426,6 +454,16 @@ export default function Books() {
                     min="1"
                     value={bookForm.totalCopies}
                     onChange={(e) => setBookForm({ ...bookForm, totalCopies: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    value={bookForm.imageUrl}
+                    onChange={(e) => setBookForm({ ...bookForm, imageUrl: e.target.value })}
+                    placeholder="https://example.com/book-image.jpg"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
