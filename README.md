@@ -39,6 +39,12 @@
 
 ---
 
+## 🟢 Deployed Project
+
+https://aesthetic-madeleine-ce3680.netlify.app
+
+---
+
 ## 📁 Folder Structure
 
 ```
