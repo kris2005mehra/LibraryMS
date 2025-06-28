@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Book, Eye, EyeOff, User, Lock, Mail } from 'lucide-react';
+import { Book, Eye, EyeOff, User, Lock, Mail, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,6 +23,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     try {
       if (isLogin) {
@@ -40,7 +42,8 @@ export default function Login() {
         setIsLogin(true);
       }
     } catch (error: any) {
-      alert(error.message || 'An error occurred');
+      console.error('Auth error:', error);
+      setError(error.message || 'An error occurred during authentication');
     } finally {
       setLoading(false);
     }
@@ -48,6 +51,8 @@ export default function Login() {
 
   const handleDemoLogin = async (role: 'admin' | 'student') => {
     setLoading(true);
+    setError('');
+    
     try {
       const demoCredentials = {
         admin: { email: 'admin@nit.ac.in', password: 'admin123' },
@@ -57,7 +62,37 @@ export default function Login() {
       await signIn(demoCredentials[role].email, demoCredentials[role].password);
       navigate('/dashboard');
     } catch (error: any) {
-      alert(error.message || 'Demo login failed');
+      console.error('Demo login error:', error);
+      
+      // If user doesn't exist, try to create them
+      if (error.message?.includes('Invalid login credentials') || error.message?.includes('Email not confirmed')) {
+        try {
+          const userData = role === 'admin' 
+            ? {
+                email: 'admin@nit.ac.in',
+                password: 'admin123',
+                name: 'Admin User',
+                rollNo: '',
+                department: '',
+                contact: ''
+              }
+            : {
+                email: 'student@nit.ac.in',
+                password: 'student123',
+                name: 'Demo Student',
+                rollNo: 'DEMO2024001',
+                department: 'Computer Science',
+                contact: '+91-9999999999'
+              };
+
+          await signUp(userData);
+          setError(`Demo ${role} account created! Please check the email (${userData.email}) to verify the account, then try logging in again.`);
+        } catch (signUpError: any) {
+          setError(`Demo ${role} login failed. Please contact administrator to set up demo accounts.`);
+        }
+      } else {
+        setError(error.message || `Demo ${role} login failed`);
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +126,18 @@ export default function Login() {
             </p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="text-sm text-red-700">
+                  {error}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Demo Login Buttons */}
           <div className="mb-6 space-y-2">
             <button
@@ -99,7 +146,7 @@ export default function Login() {
               className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
             >
               <User className="h-4 w-4 mr-2" />
-              Demo Admin Login
+              {loading ? 'Setting up...' : 'Demo Admin Login'}
             </button>
             <button
               onClick={() => handleDemoLogin('student')}
@@ -107,7 +154,7 @@ export default function Login() {
               className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
             >
               <User className="h-4 w-4 mr-2" />
-              Demo Student Login
+              {loading ? 'Setting up...' : 'Demo Student Login'}
             </button>
           </div>
 
@@ -242,11 +289,25 @@ export default function Login() {
           {/* Toggle Login/Register */}
           <div className="mt-6 text-center">
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
+          </div>
+
+          {/* Instructions */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Account Setup:</h4>
+            <ul className="text-xs text-blue-800 space-y-1">
+              <li>• Click "Demo Admin Login" or "Demo Student Login" to auto-create demo accounts</li>
+              <li>• If accounts don't exist, they'll be created automatically</li>
+              <li>• Check email for verification link after account creation</li>
+              <li>• Admin: admin@nit.ac.in | Student: student@nit.ac.in</li>
+            </ul>
           </div>
 
           {/* Footer */}

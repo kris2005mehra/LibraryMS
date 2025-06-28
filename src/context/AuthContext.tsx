@@ -105,9 +105,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     department?: string;
     contact?: string;
   }) => {
+    // Determine role based on email
+    const role = userData.email === 'admin@nit.ac.in' ? 'admin' : 'student';
+    
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
+      options: {
+        data: {
+          name: userData.name,
+          role: role,
+          roll_no: userData.rollNo,
+          department: userData.department,
+          contact: userData.contact,
+        }
+      }
     });
 
     if (error) {
@@ -115,21 +127,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (data.user) {
-      // Create user profile
+      // Create user profile in our users table
       const { error: profileError } = await supabase
         .from('users')
         .insert({
           id: data.user.id,
           email: userData.email,
           name: userData.name,
-          role: 'student',
+          role: role,
           roll_no: userData.rollNo,
           department: userData.department,
           contact: userData.contact,
         });
 
       if (profileError) {
-        throw profileError;
+        console.error('Profile creation error:', profileError);
+        // Don't throw here as the auth user was created successfully
       }
     }
   };
