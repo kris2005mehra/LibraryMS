@@ -69,10 +69,12 @@ interface LibraryState {
   stats: LibraryStats;
   darkMode: boolean;
   loading: boolean;
+  error: string | null;
 }
 
 type LibraryAction = 
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_USERS'; payload: User[] }
   | { type: 'SET_BOOKS'; payload: Book[] }
   | { type: 'SET_ISSUES'; payload: Issue[] }
@@ -105,12 +107,15 @@ const initialState: LibraryState = {
   },
   darkMode: false,
   loading: true,
+  error: null,
 };
 
 function libraryReducer(state: LibraryState, action: LibraryAction): LibraryState {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
     case 'SET_USERS':
       return { ...state, users: action.payload };
     case 'SET_BOOKS':
@@ -193,19 +198,28 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   // Fetch data from Supabase
   const refreshData = async () => {
-    if (!user) return;
+    if (!user) {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return;
+    }
 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
 
-      // Fetch users
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch all data in parallel
+      const [usersResponse, booksResponse, issuesResponse, finesResponse] = await Promise.all([
+        supabase.from('users').select('*').order('created_at', { ascending: false }),
+        supabase.from('books').select('*').order('created_at', { ascending: false }),
+        supabase.from('issues').select('*').order('created_at', { ascending: false }),
+        supabase.from('fines').select('*').order('created_at', { ascending: false })
+      ]);
 
-      if (usersData) {
-        const users: User[] = usersData.map(u => ({
+      // Handle users
+      if (usersResponse.error) {
+        console.error('Error fetching users:', usersResponse.error);
+      } else if (usersResponse.data) {
+        const users: User[] = usersResponse.data.map(u => ({
           id: u.id,
           name: u.name,
           email: u.email,
@@ -218,14 +232,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_USERS', payload: users });
       }
 
-      // Fetch books
-      const { data: booksData } = await supabase
-        .from('books')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (booksData) {
-        const books: Book[] = booksData.map(b => ({
+      // Handle books
+      if (booksResponse.error) {
+        console.error('Error fetching books:', booksResponse.error);
+      } else if (booksResponse.data) {
+        const books: Book[] = booksResponse.data.map(b => ({
           id: b.id,
           isbn: b.isbn,
           title: b.title,
@@ -242,14 +253,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_BOOKS', payload: books });
       }
 
-      // Fetch issues
-      const { data: issuesData } = await supabase
-        .from('issues')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (issuesData) {
-        const issues: Issue[] = issuesData.map(i => ({
+      // Handle issues
+      if (issuesResponse.error) {
+        console.error('Error fetching issues:', issuesResponse.error);
+      } else if (issuesResponse.data) {
+        const issues: Issue[] = issuesResponse.data.map(i => ({
           id: i.id,
           bookId: i.book_id,
           studentId: i.student_id,
@@ -263,14 +271,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ISSUES', payload: issues });
       }
 
-      // Fetch fines
-      const { data: finesData } = await supabase
-        .from('fines')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (finesData) {
-        const fines: Fine[] = finesData.map(f => ({
+      // Handle fines
+      if (finesResponse.error) {
+        console.error('Error fetching fines:', finesResponse.error);
+      } else if (finesResponse.data) {
+        const fines: Fine[] = finesResponse.data.map(f => ({
           id: f.id,
           studentId: f.student_id,
           issueId: f.issue_id,
@@ -285,6 +290,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error('Error fetching data:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load library data' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -294,6 +300,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       refreshData();
+    } else {
+      // Reset state when user logs out
+      dispatch({ type: 'SET_USERS', payload: [] });
+      dispatch({ type: 'SET_BOOKS', payload: [] });
+      dispatch({ type: 'SET_ISSUES', payload: [] });
+      dispatch({ type: 'SET_FINES', payload: [] });
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [user]);
 

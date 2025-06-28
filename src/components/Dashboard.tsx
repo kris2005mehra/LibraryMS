@@ -13,14 +13,15 @@ import {
   TrendingUp,
   Moon,
   Sun,
-  LogOut
+  LogOut,
+  RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const stats = useStats();
   const { user, signOut } = useAuth();
-  const { state, dispatch } = useLibrary();
+  const { state, dispatch, refreshData } = useLibrary();
   const navigate = useNavigate();
 
   const toggleDarkMode = () => {
@@ -34,6 +35,10 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
+  };
+
+  const handleRefresh = async () => {
+    await refreshData();
   };
 
   const StatCard = ({ 
@@ -90,8 +95,42 @@ export default function Dashboard() {
 
   if (state.loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div 
+        className="min-h-screen bg-cover bg-center bg-fixed relative flex items-center justify-center"
+        style={{
+          backgroundImage: 'url(https://images.shiksha.com/mediadata/images/1622116015phprRIhlq.jpeg)',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+        <div className="relative z-10 text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-white mb-4 mx-auto"></div>
+          <p className="text-white text-xl">Loading library data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div 
+        className="min-h-screen bg-cover bg-center bg-fixed relative flex items-center justify-center"
+        style={{
+          backgroundImage: 'url(https://images.shiksha.com/mediadata/images/1622116015phprRIhlq.jpeg)',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+        <div className="relative z-10 text-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <p className="font-bold">Error loading data</p>
+            <p>{state.error}</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -108,11 +147,18 @@ export default function Dashboard() {
       
       {/* Content */}
       <div className="relative z-10 space-y-8 p-4 sm:p-6 lg:p-8">
-        {/* Welcome Header with Theme Toggle and Sign Out */}
+        {/* Welcome Header with Action Buttons */}
         <div className="text-center py-8">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 relative">
             {/* Action Buttons */}
             <div className="absolute top-4 right-4 flex space-x-2">
+              <button
+                onClick={handleRefresh}
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
+                title="Refresh Data"
+              >
+                <RefreshCw className="h-6 w-6 text-white" />
+              </button>
               <button
                 onClick={toggleDarkMode}
                 className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
@@ -228,9 +274,9 @@ export default function Dashboard() {
                     return (
                       <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50/80 dark:bg-gray-700/80 rounded-lg backdrop-blur-sm">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{book?.title || 'Unknown Book'}</p>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Issued to {student?.name} on {new Date(issue.issueDate).toLocaleDateString()}
+                            Issued to {student?.name || 'Unknown Student'} on {new Date(issue.issueDate).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">
@@ -265,9 +311,9 @@ export default function Dashboard() {
                     return (
                       <div key={issue.id} className="flex items-center justify-between p-3 bg-red-50/80 dark:bg-red-900/80 border border-red-200/50 dark:border-red-700/50 rounded-lg backdrop-blur-sm">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{book?.title || 'Unknown Book'}</p>
                           <p className="text-sm text-gray-700 dark:text-gray-200">
-                            {student?.name} • {daysOverdue} days overdue
+                            {student?.name || 'Unknown Student'} • {daysOverdue} days overdue
                           </p>
                         </div>
                         <div className="text-sm font-medium text-red-600 dark:text-red-400">
