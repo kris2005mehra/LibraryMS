@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
 import { 
   Book, 
@@ -20,6 +21,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const { user, signOut } = useAuth();
   const { state, dispatch } = useLibrary();
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,6 +29,15 @@ export default function Layout({ children }: LayoutProps) {
 
   const toggleDarkMode = () => {
     dispatch({ type: 'TOGGLE_DARK_MODE' });
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const navigation = [
@@ -39,7 +50,7 @@ export default function Layout({ children }: LayoutProps) {
   ];
 
   const filteredNavigation = navigation.filter(item => 
-    item.roles.includes(state.user?.role || 'admin')
+    item.roles.includes(user?.role || 'student')
   );
 
   return (
@@ -75,6 +86,17 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
               ))}
             </nav>
+            
+            {/* Mobile Sign Out */}
+            <div className="absolute bottom-0 w-full p-4">
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center px-2 py-2 text-base font-medium rounded-md text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              >
+                <LogOut className="mr-4 h-6 w-6" />
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
 
@@ -101,6 +123,17 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 ))}
               </nav>
+              
+              {/* Desktop Sign Out */}
+              <div className="p-4">
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                >
+                  <LogOut className="mr-3 h-6 w-6" />
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -122,10 +155,10 @@ export default function Layout({ children }: LayoutProps) {
                     </button>
                     <div className="ml-4 lg:ml-0">
                       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                        Welcome, {state.user?.name || 'User'}
+                        Welcome, {user?.name || 'User'}
                       </h1>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {(state.user?.role || 'admin').charAt(0).toUpperCase() + (state.user?.role || 'admin').slice(1)} Dashboard
+                        {(user?.role || 'student').charAt(0).toUpperCase() + (user?.role || 'student').slice(1)} Dashboard
                       </p>
                     </div>
                   </div>
