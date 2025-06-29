@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Book, Eye, EyeOff, User, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Book, Eye, EyeOff, User, Lock, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,6 +25,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       if (isLogin) {
@@ -38,8 +40,9 @@ export default function Login() {
           department: formData.department,
           contact: formData.contact,
         });
-        alert('Registration successful! Please check your email to verify your account.');
+        setSuccess('Registration successful! Please check your email to verify your account, then sign in.');
         setIsLogin(true);
+        setFormData({ ...formData, password: '' });
       }
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -52,6 +55,7 @@ export default function Login() {
   const handleDemoLogin = async (role: 'admin' | 'student') => {
     setLoading(true);
     setError('');
+    setSuccess('');
     
     try {
       const demoCredentials = {
@@ -65,7 +69,7 @@ export default function Login() {
       console.error('Demo login error:', error);
       
       // If user doesn't exist, try to create them
-      if (error.message?.includes('Invalid login credentials') || error.message?.includes('Email not confirmed')) {
+      if (error.message?.includes('Invalid login credentials')) {
         try {
           const userData = role === 'admin' 
             ? {
@@ -86,9 +90,9 @@ export default function Login() {
               };
 
           await signUp(userData);
-          setError(`Demo ${role} account created! Please check the email (${userData.email}) to verify the account, then try logging in again.`);
+          setSuccess(`Demo ${role} account created! Please check the email (${userData.email}) to verify the account, then try the demo login again.`);
         } catch (signUpError: any) {
-          setError(`Demo ${role} login failed. Please contact administrator to set up demo accounts.`);
+          setError(`Failed to create demo ${role} account. ${signUpError.message}`);
         }
       } else {
         setError(error.message || `Demo ${role} login failed`);
@@ -138,6 +142,18 @@ export default function Login() {
             </div>
           )}
 
+          {/* Success Message */}
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start">
+                <CheckCircle className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="text-sm text-green-700">
+                  {success}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Demo Login Buttons */}
           <div className="mb-6 space-y-2">
             <button
@@ -146,7 +162,7 @@ export default function Login() {
               className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
             >
               <User className="h-4 w-4 mr-2" />
-              {loading ? 'Setting up...' : 'Demo Admin Login'}
+              {loading ? 'Signing in...' : 'Demo Admin Login'}
             </button>
             <button
               onClick={() => handleDemoLogin('student')}
@@ -154,7 +170,7 @@ export default function Login() {
               className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
             >
               <User className="h-4 w-4 mr-2" />
-              {loading ? 'Setting up...' : 'Demo Student Login'}
+              {loading ? 'Signing in...' : 'Demo Student Login'}
             </button>
           </div>
 
@@ -292,6 +308,7 @@ export default function Login() {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError('');
+                setSuccess('');
               }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -301,12 +318,12 @@ export default function Login() {
 
           {/* Instructions */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Account Setup:</h4>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Quick Start:</h4>
             <ul className="text-xs text-blue-800 space-y-1">
-              <li>• Click "Demo Admin Login" or "Demo Student Login" to auto-create demo accounts</li>
-              <li>• If accounts don't exist, they'll be created automatically</li>
-              <li>• Check email for verification link after account creation</li>
-              <li>• Admin: admin@nit.ac.in | Student: student@nit.ac.in</li>
+              <li>• Use "Demo Admin Login" for full access (admin@nit.ac.in)</li>
+              <li>• Use "Demo Student Login" for student view (student@nit.ac.in)</li>
+              <li>• If demo accounts don't exist, they'll be created automatically</li>
+              <li>• Check email for verification after account creation</li>
             </ul>
           </div>
 
