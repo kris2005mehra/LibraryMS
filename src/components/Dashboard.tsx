@@ -13,15 +13,14 @@ import {
   TrendingUp,
   Moon,
   Sun,
-  LogOut,
-  RefreshCw
+  LogOut
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const stats = useStats();
   const { user, signOut } = useAuth();
-  const { state, dispatch, refreshData } = useLibrary();
+  const { state, dispatch } = useLibrary();
   const navigate = useNavigate();
 
   const toggleDarkMode = () => {
@@ -35,10 +34,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
-
-  const handleRefresh = async () => {
-    await refreshData();
   };
 
   const StatCard = ({ 
@@ -93,58 +88,10 @@ export default function Dashboard() {
     return dueDate < currentDate;
   });
 
-  // Show loading state
-  if (state.loading && !state.dataLoaded) {
+  if (state.loading) {
     return (
-      <div 
-        className="min-h-screen bg-cover bg-center bg-fixed relative flex items-center justify-center"
-        style={{
-          backgroundImage: 'url(https://images.shiksha.com/mediadata/images/1622116015phprRIhlq.jpeg)',
-        }}
-      >
-        <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
-        <div className="relative z-10 text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-white mb-4 mx-auto"></div>
-          <p className="text-white text-xl font-semibold">Loading library data...</p>
-          <p className="text-white/80 text-sm mt-2">Please wait while we fetch your data</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state with retry option
-  if (state.error && !state.dataLoaded) {
-    return (
-      <div 
-        className="min-h-screen bg-cover bg-center bg-fixed relative flex items-center justify-center"
-        style={{
-          backgroundImage: 'url(https://images.shiksha.com/mediadata/images/1622116015phprRIhlq.jpeg)',
-        }}
-      >
-        <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
-        <div className="relative z-10 text-center max-w-md mx-auto p-6">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-            <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Data</h3>
-            <p className="text-gray-600 mb-6">{state.error}</p>
-            <div className="space-y-3">
-              <button
-                onClick={handleRefresh}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -161,19 +108,11 @@ export default function Dashboard() {
       
       {/* Content */}
       <div className="relative z-10 space-y-8 p-4 sm:p-6 lg:p-8">
-        {/* Welcome Header with Action Buttons */}
+        {/* Welcome Header with Theme Toggle and Sign Out */}
         <div className="text-center py-8">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 relative">
             {/* Action Buttons */}
             <div className="absolute top-4 right-4 flex space-x-2">
-              <button
-                onClick={handleRefresh}
-                disabled={state.loading}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200 disabled:opacity-50"
-                title="Refresh Data"
-              >
-                <RefreshCw className={`h-6 w-6 text-white ${state.loading ? 'animate-spin' : ''}`} />
-              </button>
               <button
                 onClick={toggleDarkMode}
                 className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
@@ -289,9 +228,9 @@ export default function Dashboard() {
                     return (
                       <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50/80 dark:bg-gray-700/80 rounded-lg backdrop-blur-sm">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{book?.title || 'Unknown Book'}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Issued to {student?.name || 'Unknown Student'} on {new Date(issue.issueDate).toLocaleDateString()}
+                            Issued to {student?.name} on {new Date(issue.issueDate).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">
@@ -326,9 +265,9 @@ export default function Dashboard() {
                     return (
                       <div key={issue.id} className="flex items-center justify-between p-3 bg-red-50/80 dark:bg-red-900/80 border border-red-200/50 dark:border-red-700/50 rounded-lg backdrop-blur-sm">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{book?.title || 'Unknown Book'}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
                           <p className="text-sm text-gray-700 dark:text-gray-200">
-                            {student?.name || 'Unknown Student'} • {daysOverdue} days overdue
+                            {student?.name} • {daysOverdue} days overdue
                           </p>
                         </div>
                         <div className="text-sm font-medium text-red-600 dark:text-red-400">
@@ -381,16 +320,6 @@ export default function Dashboard() {
                 </div>
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Data Status Indicator */}
-        {state.dataLoaded && (
-          <div className="text-center">
-            <p className="text-white/60 text-sm">
-              Data last updated: {new Date().toLocaleTimeString()}
-              {state.loading && <span className="ml-2">• Refreshing...</span>}
-            </p>
           </div>
         )}
       </div>

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
+import { Fine } from '../types';
 import { Search, IndianRupee, CheckCircle, Clock, Download } from 'lucide-react';
 
 export default function Fines() {
-  const { user } = useAuth();
   const { state, dispatch } = useLibrary();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
@@ -31,11 +30,11 @@ export default function Fines() {
   const paidFines = state.fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
   const unpaidFines = totalFines - paidFines;
 
-  const handleMarkAsPaid = async (fineId: string) => {
+  const handleMarkAsPaid = (fineId: string) => {
     const fine = state.fines.find(f => f.id === fineId);
     if (!fine) return;
 
-    const updatedFine = {
+    const updatedFine: Fine = {
       ...fine,
       paid: true,
       paidDate: new Date().toISOString(),
@@ -84,8 +83,8 @@ export default function Fines() {
   };
 
   // Check if current user is a student and filter their fines
-  const userFines = user?.role === 'student' 
-    ? filteredFines.filter(fine => fine.studentId === user?.id)
+  const userFines = state.user?.role === 'student' 
+    ? filteredFines.filter(fine => fine.studentId === state.user?.id)
     : filteredFines;
 
   return (
@@ -93,7 +92,7 @@ export default function Fines() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fines Management</h1>
-        {(user?.role === 'admin' || user?.role === 'librarian') && (
+        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
           <button
             onClick={generateFineReport}
             className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -144,7 +143,7 @@ export default function Fines() {
       </div>
 
       {/* Search and Filters */}
-      {(user?.role === 'admin' || user?.role === 'librarian') && (
+      {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
@@ -179,7 +178,7 @@ export default function Fines() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            {user?.role === 'student' ? 'My Fines' : 'All Fines'}
+            {state.user?.role === 'student' ? 'My Fines' : 'All Fines'}
           </h3>
         </div>
         
@@ -210,7 +209,7 @@ export default function Fines() {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        {(user?.role === 'admin' || user?.role === 'librarian') && (
+                        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
                           <div>
                             <span className="font-medium">Student:</span> {student.name} ({student.rollNo})
                           </div>
@@ -233,7 +232,7 @@ export default function Fines() {
                       )}
                     </div>
                     
-                    {!fine.paid && (user?.role === 'admin' || user?.role === 'librarian') && (
+                    {!fine.paid && (state.user?.role === 'admin' || state.user?.role === 'librarian') && (
                       <button
                         onClick={() => handleMarkAsPaid(fine.id)}
                         className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -250,7 +249,7 @@ export default function Fines() {
               <IndianRupee className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No fines found</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {user?.role === 'student' 
+                {state.user?.role === 'student' 
                   ? 'You have no fines at the moment.'
                   : searchTerm || statusFilter !== 'all' 
                     ? 'Try adjusting your search criteria.' 

@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
 import { Settings as SettingsIcon, Save, RefreshCw, Download, Upload } from 'lucide-react';
 
 export default function Settings() {
-  const { user } = useAuth();
   const { state, dispatch } = useLibrary();
   const [settings, setSettings] = useState({
     libraryName: 'Narula Institute of Technology Library',
@@ -51,10 +49,10 @@ export default function Settings() {
         const importedData = JSON.parse(e.target?.result as string);
         
         if (confirm('This will replace all current data. Are you sure?')) {
-          if (importedData.users) dispatch({ type: 'SET_USERS', payload: importedData.users });
-          if (importedData.books) dispatch({ type: 'SET_BOOKS', payload: importedData.books });
-          if (importedData.issues) dispatch({ type: 'SET_ISSUES', payload: importedData.issues });
-          if (importedData.fines) dispatch({ type: 'SET_FINES', payload: importedData.fines });
+          if (importedData.users) dispatch({ type: 'LOAD_DATA', payload: { users: importedData.users } });
+          if (importedData.books) dispatch({ type: 'LOAD_DATA', payload: { books: importedData.books } });
+          if (importedData.issues) dispatch({ type: 'LOAD_DATA', payload: { issues: importedData.issues } });
+          if (importedData.fines) dispatch({ type: 'LOAD_DATA', payload: { fines: importedData.fines } });
           
           alert('Data imported successfully!');
         }
@@ -68,8 +66,8 @@ export default function Settings() {
   const handleResetData = () => {
     if (confirm('This will delete all data and cannot be undone. Are you sure?')) {
       if (confirm('Are you absolutely sure? This action is irreversible.')) {
-        dispatch({ type: 'RESET_STATE' });
-        alert('All data has been reset.');
+        localStorage.removeItem('libraryData');
+        window.location.reload();
       }
     }
   };
@@ -252,10 +250,6 @@ export default function Settings() {
             <div>
               <span className="font-medium text-gray-700 dark:text-gray-300">Total Fines:</span>
               <span className="ml-2 text-gray-600 dark:text-gray-400">{state.fines.length}</span>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">Current User:</span>
-              <span className="ml-2 text-gray-600 dark:text-gray-400">{user?.name} ({user?.role})</span>
             </div>
             <div>
               <span className="font-medium text-gray-700 dark:text-gray-300">Version:</span>

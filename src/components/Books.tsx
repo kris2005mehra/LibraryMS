@@ -1,31 +1,15 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
-import { Search, Plus, Edit, Trash2, Filter } from 'lucide-react';
-
-interface Book {
-  id: string;
-  isbn: string;
-  title: string;
-  author: string;
-  category: string;
-  publisher: string;
-  year: number;
-  stock: number;
-  totalCopies: number;
-  addedDate: string;
-  description?: string;
-  imageUrl?: string;
-}
+import { Book as BookType, User } from '../types';
+import { Search, Plus, Edit, Trash2, Eye, Filter } from 'lucide-react';
 
 export default function Books() {
-  const { user } = useAuth();
   const { state, dispatch } = useLibrary();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedBook, setSelectedBook] = useState<BookType | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [bookForm, setBookForm] = useState({
@@ -41,7 +25,7 @@ export default function Books() {
   });
 
   const categories = [...new Set(state.books.map(book => book.category))];
-  const canEdit = user?.role === 'admin' || user?.role === 'librarian';
+  const canEdit = state.user?.role === 'admin' || state.user?.role === 'librarian';
 
   const filteredBooks = state.books.filter(book => {
     const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,7 +44,7 @@ export default function Books() {
       return;
     }
 
-    const newBook: Book = {
+    const newBook: BookType = {
       id: Date.now().toString(),
       ...bookForm,
       stock: bookForm.totalCopies,
@@ -76,7 +60,7 @@ export default function Books() {
     e.preventDefault();
     if (!selectedBook) return;
 
-    const updatedBook: Book = {
+    const updatedBook: BookType = {
       ...selectedBook,
       ...bookForm,
       stock: selectedBook.stock + (bookForm.totalCopies - selectedBook.totalCopies),
@@ -120,7 +104,7 @@ export default function Books() {
     setSelectedBook(null);
   };
 
-  const openEditModal = (book: Book) => {
+  const openEditModal = (book: BookType) => {
     setSelectedBook(book);
     setBookForm({
       isbn: book.isbn,

@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.email);
       if (session?.user) {
         fetchUserProfile(session.user);
       } else {
@@ -46,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
       if (session?.user) {
         await fetchUserProfile(session.user);
       } else {
@@ -60,59 +58,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
-      console.log('Fetching profile for user:', supabaseUser.email);
-      
-      // First check if user exists in our users table
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', supabaseUser.id)
         .single();
 
-      if (error && error.code === 'PGRST116') {
-        // User doesn't exist in users table, create them
-        console.log('User not found in users table, creating profile...');
-        
-        // Determine role based on email
-        const role = supabaseUser.email === 'admin@nit.ac.in' ? 'admin' : 'student';
-        const name = supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User';
-        
-        const newUserData = {
-          id: supabaseUser.id,
-          email: supabaseUser.email!,
-          name: name,
-          role: role,
-          roll_no: supabaseUser.user_metadata?.roll_no || (role === 'student' ? 'DEMO2024001' : null),
-          department: supabaseUser.user_metadata?.department || (role === 'student' ? 'Computer Science' : null),
-          contact: supabaseUser.user_metadata?.contact || null,
-        };
-
-        const { data: insertedData, error: insertError } = await supabase
-          .from('users')
-          .insert(newUserData)
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('Error creating user profile:', insertError);
-          setUser(null);
-        } else {
-          console.log('User profile created successfully');
-          setUser({
-            id: insertedData.id,
-            email: insertedData.email,
-            name: insertedData.name,
-            role: insertedData.role,
-            rollNo: insertedData.roll_no,
-            department: insertedData.department,
-            contact: insertedData.contact,
-          });
-        }
-      } else if (error) {
+      if (error) {
         console.error('Error fetching user profile:', error);
         setUser(null);
       } else if (data) {
-        console.log('User profile found:', data.email);
         setUser({
           id: data.id,
           email: data.email,
@@ -132,21 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        throw error;
-      }
-
-      console.log('Sign in successful for:', email);
-      // The onAuthStateChange will handle setting the user
-    } catch (error) {
-      setLoading(false);
+    if (error) {
       throw error;
     }
   };
@@ -159,39 +105,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     department?: string;
     contact?: string;
   }) => {
-    setLoading(true);
-    try {
-      // Determine role based on email
-      const role = userData.email === 'admin@nit.ac.in' ? 'admin' : 'student';
-      
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
-            name: userData.name,
-            role: role,
-            roll_no: userData.rollNo,
-            department: userData.department,
-            contact: userData.contact,
-          }
-        }
-      });
+    const { data, error } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+    });
 
-      if (error) {
-        throw error;
-      }
-
-      console.log('Sign up successful for:', userData.email);
-      
-      // If user is created and confirmed immediately, create profile
-      if (data.user && !data.user.email_confirmed_at) {
-        // User needs email confirmation
-        console.log('User needs email confirmation');
-      }
-    } catch (error) {
-      setLoading(false);
+    if (error) {
       throw error;
+    }
+
+    if (data.user) {
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: data.user.id,
+          email: userData.email,
+          name: userData.name,
+          role: 'student',
+          roll_no: userData.rollNo,
+          department: userData.department,
+          contact: userData.contact,
+        });
+
+      if (profileError) {
+        throw profileError;
+      }
     }
   };
 

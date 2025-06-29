@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Book, Eye, EyeOff, User, Lock, Mail, AlertCircle, CheckCircle } from 'lucide-react';
+import { Book, Eye, EyeOff, User, Lock, Mail } from 'lucide-react';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,8 +22,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       if (isLogin) {
@@ -40,13 +36,11 @@ export default function Login() {
           department: formData.department,
           contact: formData.contact,
         });
-        setSuccess('Registration successful! Please check your email to verify your account, then sign in.');
+        alert('Registration successful! Please check your email to verify your account.');
         setIsLogin(true);
-        setFormData({ ...formData, password: '' });
       }
     } catch (error: any) {
-      console.error('Auth error:', error);
-      setError(error.message || 'An error occurred during authentication');
+      alert(error.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -54,9 +48,6 @@ export default function Login() {
 
   const handleDemoLogin = async (role: 'admin' | 'student') => {
     setLoading(true);
-    setError('');
-    setSuccess('');
-    
     try {
       const demoCredentials = {
         admin: { email: 'admin@nit.ac.in', password: 'admin123' },
@@ -66,24 +57,7 @@ export default function Login() {
       await signIn(demoCredentials[role].email, demoCredentials[role].password);
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Demo login error:', error);
-      
-      // Handle different error scenarios
-      if (error.message?.includes('Invalid login credentials') || 
-          error.message?.includes('Email not confirmed')) {
-        
-        setError(`Demo ${role} account needs to be set up. Please follow these steps:
-        
-1. Go to your Supabase Dashboard
-2. Navigate to Authentication → Settings
-3. Disable "Email Confirm" under Sign Up settings
-4. Save the changes
-5. Try the demo login again
-
-Alternatively, you can create a regular account and sign in manually.`);
-      } else {
-        setError(error.message || `Demo ${role} login failed`);
-      }
+      alert(error.message || 'Demo login failed');
     } finally {
       setLoading(false);
     }
@@ -117,30 +91,6 @@ Alternatively, you can create a regular account and sign in manually.`);
             </p>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="text-sm text-red-700 whitespace-pre-line">
-                  {error}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-start">
-                <CheckCircle className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="text-sm text-green-700">
-                  {success}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Demo Login Buttons */}
           <div className="mb-6 space-y-2">
             <button
@@ -149,7 +99,7 @@ Alternatively, you can create a regular account and sign in manually.`);
               className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
             >
               <User className="h-4 w-4 mr-2" />
-              {loading ? 'Signing in...' : 'Demo Admin Login'}
+              Demo Admin Login
             </button>
             <button
               onClick={() => handleDemoLogin('student')}
@@ -157,7 +107,7 @@ Alternatively, you can create a regular account and sign in manually.`);
               className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
             >
               <User className="h-4 w-4 mr-2" />
-              {loading ? 'Signing in...' : 'Demo Student Login'}
+              Demo Student Login
             </button>
           </div>
 
@@ -292,26 +242,11 @@ Alternatively, you can create a regular account and sign in manually.`);
           {/* Toggle Login/Register */}
           <div className="mt-6 text-center">
             <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-                setSuccess('');
-              }}
+              onClick={() => setIsLogin(!isLogin)}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
-          </div>
-
-          {/* Instructions */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Setup Instructions:</h4>
-            <ul className="text-xs text-blue-800 space-y-1">
-              <li>• For demo login to work, disable "Email Confirm" in Supabase Dashboard</li>
-              <li>• Go to Authentication → Settings → Sign Up → Toggle off "Email Confirm"</li>
-              <li>• Then try demo login or create a regular account</li>
-              <li>• Admin: admin@nit.ac.in | Student: student@nit.ac.in</li>
-            </ul>
           </div>
 
           {/* Footer */}

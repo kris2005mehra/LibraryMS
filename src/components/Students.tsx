@@ -1,21 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
+import { User } from '../types';
 import { Search, Plus, Edit, Trash2, Book, AlertTriangle } from 'lucide-react';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'librarian' | 'student';
-  rollNo?: string;
-  department?: string;
-  contact?: string;
-  joinDate: string;
-}
-
 export default function Students() {
-  const { user } = useAuth();
   const { state, dispatch } = useLibrary();
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
