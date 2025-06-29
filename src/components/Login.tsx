@@ -68,32 +68,19 @@ export default function Login() {
     } catch (error: any) {
       console.error('Demo login error:', error);
       
-      // If user doesn't exist, try to create them
-      if (error.message?.includes('Invalid login credentials')) {
-        try {
-          const userData = role === 'admin' 
-            ? {
-                email: 'admin@nit.ac.in',
-                password: 'admin123',
-                name: 'Admin User',
-                rollNo: '',
-                department: '',
-                contact: ''
-              }
-            : {
-                email: 'student@nit.ac.in',
-                password: 'student123',
-                name: 'Demo Student',
-                rollNo: 'DEMO2024001',
-                department: 'Computer Science',
-                contact: '+91-9999999999'
-              };
+      // Handle different error scenarios
+      if (error.message?.includes('Invalid login credentials') || 
+          error.message?.includes('Email not confirmed')) {
+        
+        setError(`Demo ${role} account needs to be set up. Please follow these steps:
+        
+1. Go to your Supabase Dashboard
+2. Navigate to Authentication → Settings
+3. Disable "Email Confirm" under Sign Up settings
+4. Save the changes
+5. Try the demo login again
 
-          await signUp(userData);
-          setSuccess(`Demo ${role} account created! Please check the email (${userData.email}) to verify the account, then try the demo login again.`);
-        } catch (signUpError: any) {
-          setError(`Failed to create demo ${role} account. ${signUpError.message}`);
-        }
+Alternatively, you can create a regular account and sign in manually.`);
       } else {
         setError(error.message || `Demo ${role} login failed`);
       }
@@ -135,7 +122,7 @@ export default function Login() {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <div className="flex items-start">
                 <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="text-sm text-red-700">
+                <div className="text-sm text-red-700 whitespace-pre-line">
                   {error}
                 </div>
               </div>
@@ -318,12 +305,12 @@ export default function Login() {
 
           {/* Instructions */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Quick Start:</h4>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Setup Instructions:</h4>
             <ul className="text-xs text-blue-800 space-y-1">
-              <li>• Use "Demo Admin Login" for full access (admin@nit.ac.in)</li>
-              <li>• Use "Demo Student Login" for student view (student@nit.ac.in)</li>
-              <li>• If demo accounts don't exist, they'll be created automatically</li>
-              <li>• Check email for verification after account creation</li>
+              <li>• For demo login to work, disable "Email Confirm" in Supabase Dashboard</li>
+              <li>• Go to Authentication → Settings → Sign Up → Toggle off "Email Confirm"</li>
+              <li>• Then try demo login or create a regular account</li>
+              <li>• Admin: admin@nit.ac.in | Student: student@nit.ac.in</li>
             </ul>
           </div>
 
