@@ -1,10 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './components/Auth/Login';
+import { LibraryProvider, useLibrary } from './context/LibraryContext';
+import Login from './components/Login';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
-import StudentDashboard from './components/student/StudentDashboard';
 import Books from './components/Books';
 import IssueReturn from './components/IssueReturn';
 import Students from './components/Students';
@@ -12,42 +11,29 @@ import Fines from './components/Fines';
 import Settings from './components/Settings';
 
 function AppContent() {
-  const { user, profile, loading } = useAuth();
+  const { state, dispatch } = useLibrary();
 
-  const handleLogin = (user: any, profile: any) => {
-    // Login is handled by the AuthContext
+  const handleLogin = (user: any) => {
+    dispatch({ type: 'SET_USER', payload: user });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!user || !profile) {
+  if (!state.user) {
     return <Login onLogin={handleLogin} />;
   }
 
   return (
     <Layout>
       <Routes>
-        <Route 
-          path="/dashboard" 
-          element={
-            profile.role === 'student' ? <StudentDashboard /> : <Dashboard />
-          } 
-        />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/books" element={<Books />} />
-        {(profile.role === 'admin' || profile.role === 'librarian') && (
+        {(state.user.role === 'admin' || state.user.role === 'librarian') && (
           <>
             <Route path="/issue-return" element={<IssueReturn />} />
             <Route path="/students" element={<Students />} />
           </>
         )}
         <Route path="/fines" element={<Fines />} />
-        {profile.role === 'admin' && (
+        {state.user.role === 'admin' && (
           <Route path="/settings" element={<Settings />} />
         )}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -59,11 +45,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
+    <LibraryProvider>
       <Router>
         <AppContent />
       </Router>
-    </AuthProvider>
+    </LibraryProvider>
   );
 }
 
