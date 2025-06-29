@@ -1,9 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { LibraryProvider } from './context/LibraryContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import Login from './components/Login';
+import { LibraryProvider, useLibrary } from './context/LibraryContext';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Books from './components/Books';
@@ -12,79 +9,42 @@ import Students from './components/Students';
 import Fines from './components/Fines';
 import Settings from './components/Settings';
 
+function AppContent() {
+  const { state, dispatch } = useLibrary();
+
+  // Auto-login as admin for demo purposes
+  React.useEffect(() => {
+    if (!state.user && state.users.length > 0) {
+      const adminUser = state.users.find(u => u.role === 'admin');
+      if (adminUser) {
+        dispatch({ type: 'SET_USER', payload: adminUser });
+      }
+    }
+  }, [state.users, state.user, dispatch]);
+
+  return (
+    <Layout>
+      <Routes>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/books" element={<Books />} />
+        <Route path="/issue-return" element={<IssueReturn />} />
+        <Route path="/students" element={<Students />} />
+        <Route path="/fines" element={<Fines />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Layout>
+  );
+}
+
 function App() {
   return (
-    <AuthProvider>
-      <LibraryProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Dashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/books"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Books />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/issue-return"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'librarian']}>
-                  <Layout>
-                    <IssueReturn />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/students"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'librarian']}>
-                  <Layout>
-                    <Students />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/fines"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Fines />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Layout>
-                    <Settings />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Router>
-      </LibraryProvider>
-    </AuthProvider>
+    <LibraryProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </LibraryProvider>
   );
 }
 

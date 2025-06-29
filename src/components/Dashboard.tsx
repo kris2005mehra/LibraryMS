@@ -1,6 +1,5 @@
 import React from 'react';
 import { useStats } from '../hooks/useStats';
-import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
 import { 
   Book, 
@@ -13,27 +12,17 @@ import {
   TrendingUp,
   Moon,
   Sun,
-  LogOut
+  Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const stats = useStats();
-  const { user, signOut } = useAuth();
   const { state, dispatch } = useLibrary();
   const navigate = useNavigate();
 
   const toggleDarkMode = () => {
     dispatch({ type: 'TOGGLE_DARK_MODE' });
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
   };
 
   const StatCard = ({ 
@@ -88,14 +77,6 @@ export default function Dashboard() {
     return dueDate < currentDate;
   });
 
-  if (state.loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div 
       className="min-h-screen bg-cover bg-center bg-fixed relative"
@@ -108,43 +89,29 @@ export default function Dashboard() {
       
       {/* Content */}
       <div className="relative z-10 space-y-8 p-4 sm:p-6 lg:p-8">
-        {/* Welcome Header with Theme Toggle and Sign Out */}
+        {/* Welcome Header with Theme Toggle */}
         <div className="text-center py-8">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 relative">
-            {/* Action Buttons */}
-            <div className="absolute top-4 right-4 flex space-x-2">
-              <button
-                onClick={toggleDarkMode}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
-                title={state.darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {state.darkMode ? (
-                  <Sun className="h-6 w-6 text-white" />
-                ) : (
-                  <Moon className="h-6 w-6 text-white" />
-                )}
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
-                title="Sign Out"
-              >
-                <LogOut className="h-6 w-6 text-white" />
-              </button>
-            </div>
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleDarkMode}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
+              title={state.darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {state.darkMode ? (
+                <Sun className="h-6 w-6 text-white" />
+              ) : (
+                <Moon className="h-6 w-6 text-white" />
+              )}
+            </button>
             
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
               Narula Institute of Technology
             </h1>
             <p className="text-xl text-white/90 mb-4">Library Management System</p>
             <p className="text-lg text-white/80">
-              Welcome {user?.name}, you are logged in as {user?.role?.toUpperCase()}
+              Welcome To The LMS, {state.user?.name || 'NiT'}
             </p>
-            {user?.role === 'student' && user?.rollNo && (
-              <p className="text-md text-white/70 mt-2">
-                Roll No: {user.rollNo} | Department: {user.department}
-              </p>
-            )}
           </div>
         </div>
 
@@ -285,7 +252,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        {(user?.role === 'admin' || user?.role === 'librarian') && (
+        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
           <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
