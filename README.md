@@ -1,86 +1,131 @@
+# SkillShare - College Skill Sharing Platform
 
-# 📚 Library Management System
+A modern web application that connects college students for skill-sharing sessions, similar to Astrotalk but focused on educational mentoring.
 
-**LibraryMS** is a modern and intuitive Library Management System for Narula Institute Of Technology. It’s designed to make book management efficient, fast, and beautiful—perfect for schools, colleges, or personal use.
+## Features
 
----
+### 🔐 Authentication
+- Google OAuth integration via Supabase Auth
+- Secure user management and session handling
 
-## 🚀 Features
+### 👤 User Profiles
+- Complete profile setup with skills, bio, and hourly rates
+- Profile image support
+- Availability status management
+- Rating and review system
 
-* 📖 **Book Management** – Add, update, or remove books with ease
-* 👤 **User Records** – Maintain a list of users/members
-* 🔍 **Search & Filter** – Quickly find books by title, author, or category
-* 💡 **Simple & Clean UI** – Built with Tailwind CSS
-* 🧠 **TypeScript-powered** – Strongly-typed, scalable architecture
-* ⚡ **Blazing Fast** – Powered by Vite and optimized for performance
-  
----
+### 🔍 Browse Mentors
+- Search and filter mentors by skills
+- View mentor profiles with ratings and experience
+- Real-time availability status
 
-## 📸 Screenshots
+### 💳 Booking & Payments
+- Stripe integration for secure payments
+- Session duration selection
+- Payment confirmation and session creation
 
-<img width="1452" alt="Screenshot 2025-06-14 at 7 08 16 PM" src="https://github.com/user-attachments/assets/843ebc3f-bf58-4a18-90d1-dc26c073fa9d" />
+### 💬 Live Chat
+- Real-time messaging using Supabase Realtime
+- Session-based chat rooms
+- Message history and timestamps
 
-<img width="1465" alt="Screenshot 2025-06-14 at 7 08 41 PM" src="https://github.com/user-attachments/assets/bea8fb85-b296-4d14-90c3-8a3df56cbbe8" />
+### ⭐ Rating System
+- Post-session rating and feedback
+- Automatic mentor rating calculation
+- Review history
 
-<img width="1453" alt="Screenshot 2025-06-14 at 7 08 58 PM" src="https://github.com/user-attachments/assets/6eb9afde-a339-4fea-8e8a-9d6430c5ef64" />
+### 🎨 Design Features
+- Particle.js animated backgrounds
+- Mobile-responsive design
+- Modern UI with Tailwind CSS
+- Smooth animations and transitions
 
-<img width="1444" alt="Screenshot 2025-06-14 at 7 09 39 PM" src="https://github.com/user-attachments/assets/df990ebe-deb3-435b-a9b7-56a5487d70f7" />
+### 👨‍💼 Admin Dashboard
+- User management
+- Session analytics
+- Revenue tracking
+- Platform statistics
 
----
+## Tech Stack
 
-## 🛠️ Tech Stack
+- **Frontend**: React 18, TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime)
+- **Payments**: Stripe
+- **Animations**: tsparticles.js
+- **Routing**: React Router
+- **Build Tool**: Vite
 
-* **Vite** – Next-gen front-end tooling
-* **TypeScript** – Type-safe JavaScript
-* **Tailwind CSS** – Utility-first CSS framework
-* **ESLint** – Code quality & style checker
-* **PostCSS** – CSS post-processing
-* **Node.js + npm** – Runtime & package management
+## Setup Instructions
 
----
+### 1. Environment Variables
 
-## 🟢 Deployed Project
+Create a `.env` file in the root directory:
 
-https://aesthetic-madeleine-ce3680.netlify.app
-
----
-
-## 📁 Folder Structure
-
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 ```
-LibraryMS/
-├── src/                  # Source code (components, pages, logic)
-├── public/               # Static assets
-├── index.html            # Entry HTML
-├── tailwind.config.js    # Tailwind customization
-├── vite.config.ts        # Vite config
-├── tsconfig*.json        # TypeScript configs
-└── package.json          # Scripts & dependencies
-```
 
----
+### 2. Supabase Setup
 
-## ⚙️ Getting Started
+1. Create a new Supabase project
+2. Run the migration files in the `supabase/migrations` folder
+3. Enable Google OAuth in Supabase Auth settings
+4. Set up RLS policies (included in migrations)
 
-### 🧬 Clone & Setup
+### 3. Stripe Setup
+
+1. Create a Stripe account
+2. Get your publishable key
+3. Set up webhooks for payment processing (optional for demo)
+
+### 4. Installation
 
 ```bash
-git clone https://github.com/kris2005mehra/LibraryMS.git
-cd LibraryMS
 npm install
-```
-
-### 🔥 Start Dev Server
-
-```bash
 npm run dev
 ```
 
-### 🏗️ Build for Production
+## Database Schema
 
-```bash
-npm run build
-```
-## ✅ Conclusion
+### Tables
 
-LibraryMS is more than just a project—it's a step toward building real-world, scalable solutions with modern technologies. Whether you're a developer looking to contribute, or someone who needs a lightweight and customizable library system, LibraryMS offers a solid foundation. Stay tuned for more updates as this project grows in features and functionality.
+- **profiles**: User profiles with skills and ratings
+- **sessions**: Mentoring sessions with payment info
+- **messages**: Real-time chat messages
+- **ratings**: Session ratings and feedback
+
+### Key Features
+
+- Row Level Security (RLS) enabled
+- Real-time subscriptions for chat
+- Automatic rating calculations
+- Optimized indexes for performance
+
+## Usage
+
+1. **Sign Up**: Use Google OAuth to create an account
+2. **Profile Setup**: Complete your profile with skills and rates
+3. **Browse Mentors**: Find mentors by skills and availability
+4. **Book Session**: Pay for a session using Stripe
+5. **Chat**: Engage in real-time chat during the session
+6. **Rate**: Provide feedback after the session
+
+## Demo Features
+
+- Mock payment processing (for demo purposes)
+- Sample mentor data
+- Real-time chat functionality
+- Complete user flow from signup to rating
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
