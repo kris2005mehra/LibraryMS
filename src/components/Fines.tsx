@@ -1,22 +1,21 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useFines } from '../hooks/useFines';
+import { useLibrary } from '../context/LibraryContext';
 import { Search, IndianRupee, CheckCircle, Clock, Download } from 'lucide-react';
 
 export default function Fines() {
-  const { profile } = useAuth();
-  const { fines, updateFine } = useFines();
+  const { state, dispatch } = useLibrary();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
 
-  const filteredFines = fines.filter(fine => {
-    const student = fine.profiles;
-    const book = fine.issues?.books;
+  const filteredFines = state.fines.filter(fine => {
+    const student = state.users.find(u => u.id === fine.studentId);
+    const issue = state.issues.find(i => i.id === fine.issueId);
+    const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
     
     if (!student) return false;
     
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (student.roll_no && student.roll_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (student.rollNo && student.rollNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
                          (book && book.title.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || 
@@ -26,19 +25,21 @@ export default function Fines() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalFines = fines.reduce((sum, fine) => sum + fine.amount, 0);
-  const paidFines = fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
+  const totalFines = state.fines.reduce((sum, fine) => sum + fine.amount, 0);
+  const paidFines = state.fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
   const unpaidFines = totalFines - paidFines;
 
-  const handleMarkAsPaid = async (fineId: string) => {
-    try {
-      await updateFine(fineId, {
-        paid: true,
-        paid_date: new Date().toISOString(),
-      });
-    } catch (error: any) {
-      alert(error.message);
-    }
+  const handleMarkAsPaid = (fineId: string) => {
+    const fine = state.fines.find(f => f.id === fineId);
+    if (!fine) return;
+
+    const updatedFine = {
+      ...fine,
+      paid: true,
+      paidDate: new Date().toISOString(),
+    };
+
+    dispatch({ type: 'UPDATE_FINE', payload: updatedFine });
   };
 
   const generateFineReport = () => {
@@ -46,17 +47,18 @@ export default function Fines() {
     const csvContent = [
       ['Student Name', 'Roll No', 'Book Title', 'Fine Amount', 'Date', 'Status', 'Paid Date'].join(','),
       ...filteredFines.map(fine => {
-        const student = fine.profiles;
-        const book = fine.issues?.books;
+        const student = state.users.find(u => u.id === fine.studentId);
+        const issue = state.issues.find(i => i.id === fine.issueId);
+        const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
         
         return [
           student?.name || 'Unknown',
-          student?.roll_no || 'N/A',
+          student?.rollNo || 'N/A',
           book?.title || 'Unknown Book',
           fine.amount,
-          new Date(fine.created_at).toLocaleDateString(),
+          new Date(fine.date).toLocaleDateString(),
           fine.paid ? 'Paid' : 'Unpaid',
-          fine.paid_date ? new Date(fine.paid_date).toLocaleDateString() : 'N/A'
+          fine.paidDate ? new Date(fine.paidDate).toLocaleDateString() : 'N/A'
         ].join(',');
       })
     ].join('\n');
@@ -72,25 +74,18 @@ export default function Fines() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Check if current user is a student and filter their fines
-  const userFines = profile?.role === 'student' 
-    ? filteredFines.filter(fine => fine.student_id === profile?.id)
-    : filteredFines;
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fines Management</h1>
-        {(profile?.role === 'admin' || profile?.role === 'librarian') && (
-          <button
-            onClick={generateFineReport}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Export Report
-          </button>
-        )}
+        <button
+          onClick={generateFineReport}
+          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+        >
+          <Download className="h-5 w-5 mr-2" />
+          Export Report
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -133,50 +128,47 @@ export default function Fines() {
       </div>
 
       {/* Search and Filters */}
-      {(profile?.role === 'admin' || profile?.role === 'librarian') && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Search by student name, roll no, or book..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              >
-                <option value="all">All Fines</option>
-                <option value="paid">Paid Fines</option>
-                <option value="unpaid">Unpaid Fines</option>
-              </select>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-              Showing {userFines.length} fines
-            </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <input
+              type="text"
+              placeholder="Search by student name, roll no, or book..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            >
+              <option value="all">All Fines</option>
+              <option value="paid">Paid Fines</option>
+              <option value="unpaid">Unpaid Fines</option>
+            </select>
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+            Showing {filteredFines.length} fines
           </div>
         </div>
-      )}
+      </div>
 
       {/* Fines List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            {profile?.role === 'student' ? 'My Fines' : 'All Fines'}
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">All Fines</h3>
         </div>
         
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {userFines.length > 0 ? (
-            userFines.map((fine: any) => {
-              const student = fine.profiles;
-              const book = fine.issues?.books;
+          {filteredFines.length > 0 ? (
+            filteredFines.map((fine) => {
+              const student = state.users.find(u => u.id === fine.studentId);
+              const issue = state.issues.find(i => i.id === fine.issueId);
+              const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
               
               if (!student) return null;
 
@@ -198,11 +190,9 @@ export default function Fines() {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        {(profile?.role === 'admin' || profile?.role === 'librarian') && (
-                          <div>
-                            <span className="font-medium">Student:</span> {student.name} ({student.roll_no})
-                          </div>
-                        )}
+                        <div>
+                          <span className="font-medium">Student:</span> {student.name} ({student.rollNo})
+                        </div>
                         <div>
                           <span className="font-medium">Amount:</span> ₹{fine.amount}
                         </div>
@@ -210,18 +200,18 @@ export default function Fines() {
                           <span className="font-medium">Reason:</span> {fine.reason}
                         </div>
                         <div>
-                          <span className="font-medium">Date:</span> {new Date(fine.created_at).toLocaleDateString()}
+                          <span className="font-medium">Date:</span> {new Date(fine.date).toLocaleDateString()}
                         </div>
                       </div>
                       
-                      {fine.paid && fine.paid_date && (
+                      {fine.paid && fine.paidDate && (
                         <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                          <span className="font-medium">Paid on:</span> {new Date(fine.paid_date).toLocaleDateString()}
+                          <span className="font-medium">Paid on:</span> {new Date(fine.paidDate).toLocaleDateString()}
                         </div>
                       )}
                     </div>
                     
-                    {!fine.paid && (profile?.role === 'admin' || profile?.role === 'librarian') && (
+                    {!fine.paid && (
                       <button
                         onClick={() => handleMarkAsPaid(fine.id)}
                         className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -238,11 +228,9 @@ export default function Fines() {
               <IndianRupee className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No fines found</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {profile?.role === 'student' 
-                  ? 'You have no fines at the moment.'
-                  : searchTerm || statusFilter !== 'all' 
-                    ? 'Try adjusting your search criteria.' 
-                    : 'No fines have been recorded yet.'
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Try adjusting your search criteria.' 
+                  : 'No fines have been recorded yet.'
                 }
               </p>
             </div>

@@ -1,9 +1,6 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useBooks } from '../hooks/useBooks';
-import { useIssues } from '../hooks/useIssues';
-import { useFines } from '../hooks/useFines';
-import { useProfiles } from '../hooks/useProfiles';
+import { useLibrary } from '../context/LibraryContext';
+import { useStats } from '../hooks/useStats';
 import { 
   Book, 
   BookOpen, 
@@ -18,31 +15,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { profile } = useAuth();
-  const { books } = useBooks();
-  const { issues } = useIssues();
-  const { fines } = useFines();
-  const { profiles } = useProfiles();
+  const { state } = useLibrary();
+  const stats = useStats();
   const navigate = useNavigate();
-
-  // Calculate stats
-  const totalBooks = books.reduce((sum, book) => sum + book.total_copies, 0);
-  const issuedBooks = issues.filter(issue => issue.status === 'issued').length;
-  const overdueBooks = issues.filter(issue => {
-    if (issue.status !== 'issued') return false;
-    const dueDate = new Date(issue.due_date);
-    const currentDate = new Date();
-    return dueDate < currentDate;
-  }).length;
-  
-  const registeredStudents = profiles.filter(profile => profile.role === 'student').length;
-  const today = new Date().toISOString().split('T')[0];
-  const todayReturns = issues.filter(issue => 
-    issue.return_date && issue.return_date.startsWith(today)
-  ).length;
-  
-  const totalFines = fines.reduce((sum, fine) => sum + fine.amount, 0);
-  const paidFines = fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
 
   const StatCard = ({ 
     title, 
@@ -84,14 +59,14 @@ export default function Dashboard() {
     );
   };
 
-  const recentIssues = issues
+  const recentIssues = state.issues
     .filter(issue => issue.status === 'issued')
-    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime())
+    .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
     .slice(0, 5);
 
-  const overdueIssues = issues.filter(issue => {
+  const overdueIssues = state.issues.filter(issue => {
     if (issue.status !== 'issued') return false;
-    const dueDate = new Date(issue.due_date);
+    const dueDate = new Date(issue.dueDate);
     const currentDate = new Date();
     return dueDate < currentDate;
   });
@@ -116,7 +91,7 @@ export default function Dashboard() {
             </h1>
             <p className="text-xl text-white/90 mb-4">Library Management System</p>
             <p className="text-lg text-white/80">
-              Welcome To The LMS, {profile?.name || 'Admin'}
+              Welcome To The LMS
             </p>
           </div>
         </div>
@@ -125,28 +100,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Books"
-            value={totalBooks}
+            value={stats.totalBooks}
             icon={Book}
             color="blue"
             subtitle="In collection"
           />
           <StatCard
             title="Issued Books"
-            value={issuedBooks}
+            value={stats.issuedBooks}
             icon={BookOpen}
             color="green"
             subtitle="Currently out"
           />
           <StatCard
             title="Overdue Books"
-            value={overdueBooks}
+            value={stats.overdueBooks}
             icon={AlertTriangle}
             color="red"
             subtitle="Past due date"
           />
           <StatCard
             title="Registered Students"
-            value={registeredStudents}
+            value={stats.registeredStudents}
             icon={Users}
             color="purple"
             subtitle="Active members"
@@ -156,28 +131,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Today's Returns"
-            value={todayReturns}
+            value={stats.todayReturns}
             icon={RotateCcw}
             color="indigo"
             subtitle="Books returned today"
           />
           <StatCard
             title="Total Fines"
-            value={totalFines}
+            value={stats.totalFines}
             icon={IndianRupee}
             color="yellow"
             subtitle="₹ Outstanding"
           />
           <StatCard
             title="Paid Fines"
-            value={paidFines}
+            value={stats.paidFines}
             icon={CheckCircle}
             color="green"
             subtitle="₹ Collected"
           />
           <StatCard
             title="Collection Rate"
-            value={Math.round((paidFines / (totalFines || 1)) * 100)}
+            value={Math.round((stats.paidFines / (stats.totalFines || 1)) * 100)}
             icon={TrendingUp}
             color="blue"
             subtitle="% fines collected"
@@ -194,19 +169,24 @@ export default function Dashboard() {
             <div className="p-6">
               {recentIssues.length > 0 ? (
                 <div className="space-y-4">
-                  {recentIssues.map((issue: any) => (
-                    <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50/80 dark:bg-gray-700/80 rounded-lg backdrop-blur-sm">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{issue.books?.title}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          Issued to {issue.profiles?.name} on {new Date(issue.issue_date).toLocaleDateString()}
-                        </p>
+                  {recentIssues.map((issue) => {
+                    const book = state.books.find(b => b.id === issue.bookId);
+                    const student = state.users.find(u => u.id === issue.studentId);
+                    
+                    return (
+                      <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50/80 dark:bg-gray-700/80 rounded-lg backdrop-blur-sm">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            Issued to {student?.name} on {new Date(issue.issueDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          Due: {new Date(issue.dueDate).toLocaleDateString()}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        Due: {new Date(issue.due_date).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-gray-600 dark:text-gray-300 text-center py-4">No recent issues</p>
@@ -225,15 +205,17 @@ export default function Dashboard() {
             <div className="p-6">
               {overdueIssues.length > 0 ? (
                 <div className="space-y-4">
-                  {overdueIssues.slice(0, 5).map((issue: any) => {
-                    const daysOverdue = Math.floor((new Date().getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24));
+                  {overdueIssues.slice(0, 5).map((issue) => {
+                    const book = state.books.find(b => b.id === issue.bookId);
+                    const student = state.users.find(u => u.id === issue.studentId);
+                    const daysOverdue = Math.floor((new Date().getTime() - new Date(issue.dueDate).getTime()) / (1000 * 60 * 60 * 24));
                     
                     return (
                       <div key={issue.id} className="flex items-center justify-between p-3 bg-red-50/80 dark:bg-red-900/80 border border-red-200/50 dark:border-red-700/50 rounded-lg backdrop-blur-sm">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{issue.books?.title}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
                           <p className="text-sm text-gray-700 dark:text-gray-200">
-                            {issue.profiles?.name} • {daysOverdue} days overdue
+                            {student?.name} • {daysOverdue} days overdue
                           </p>
                         </div>
                         <div className="text-sm font-medium text-red-600 dark:text-red-400">
@@ -251,43 +233,41 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        {(profile?.role === 'admin' || profile?.role === 'librarian') && (
-          <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button 
-                onClick={() => navigate('/books')}
-                className="flex items-center p-4 bg-blue-50/80 dark:bg-blue-900/80 hover:bg-blue-100/80 dark:hover:bg-blue-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
-              >
-                <Book className="h-8 w-8 text-blue-600 mr-3" />
-                <div className="text-left">
-                  <p className="font-medium text-gray-900 dark:text-white">Manage Books</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage books</p>
-                </div>
-              </button>
-              <button 
-                onClick={() => navigate('/issue-return')}
-                className="flex items-center p-4 bg-green-50/80 dark:bg-green-900/80 hover:bg-green-100/80 dark:hover:bg-green-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
-              >
-                <BookOpen className="h-8 w-8 text-green-600 mr-3" />
-                <div className="text-left">
-                  <p className="font-medium text-gray-900 dark:text-white">Issue Book</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Issue to student</p>
-                </div>
-              </button>
-              <button 
-                onClick={() => navigate('/students')}
-                className="flex items-center p-4 bg-purple-50/80 dark:bg-purple-900/80 hover:bg-purple-100/80 dark:hover:bg-purple-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
-              >
-                <Users className="h-8 w-8 text-purple-600 mr-3" />
-                <div className="text-left">
-                  <p className="font-medium text-gray-900 dark:text-white">Manage Students</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage students</p>
-                </div>
-              </button>
-            </div>
+        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button 
+              onClick={() => navigate('/books')}
+              className="flex items-center p-4 bg-blue-50/80 dark:bg-blue-900/80 hover:bg-blue-100/80 dark:hover:bg-blue-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
+            >
+              <Book className="h-8 w-8 text-blue-600 mr-3" />
+              <div className="text-left">
+                <p className="font-medium text-gray-900 dark:text-white">Manage Books</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage books</p>
+              </div>
+            </button>
+            <button 
+              onClick={() => navigate('/issue-return')}
+              className="flex items-center p-4 bg-green-50/80 dark:bg-green-900/80 hover:bg-green-100/80 dark:hover:bg-green-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
+            >
+              <BookOpen className="h-8 w-8 text-green-600 mr-3" />
+              <div className="text-left">
+                <p className="font-medium text-gray-900 dark:text-white">Issue Book</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Issue to student</p>
+              </div>
+            </button>
+            <button 
+              onClick={() => navigate('/students')}
+              className="flex items-center p-4 bg-purple-50/80 dark:bg-purple-900/80 hover:bg-purple-100/80 dark:hover:bg-purple-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
+            >
+              <Users className="h-8 w-8 text-purple-600 mr-3" />
+              <div className="text-left">
+                <p className="font-medium text-gray-900 dark:text-white">Manage Students</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage students</p>
+              </div>
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

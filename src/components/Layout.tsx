@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useLibrary } from '../context/LibraryContext';
 import { 
   Book, 
   Users, 
@@ -8,9 +8,10 @@ import {
   CreditCard, 
   BarChart3, 
   Settings,
-  LogOut,
   Menu,
-  X
+  X,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -18,25 +19,21 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { profile, signOut } = useAuth();
+  const { state, dispatch } = useLibrary();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: ['admin', 'librarian', 'student'] },
-    { name: 'Books', href: '/books', icon: Book, roles: ['admin', 'librarian', 'student'] },
-    { name: 'Issue/Return', href: '/issue-return', icon: BookOpen, roles: ['admin', 'librarian'] },
-    { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'librarian'] },
-    { name: 'Fines', href: '/fines', icon: CreditCard, roles: ['admin', 'librarian', 'student'] },
-    { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Books', href: '/books', icon: Book },
+    { name: 'Issue/Return', href: '/issue-return', icon: BookOpen },
+    { name: 'Students', href: '/students', icon: Users },
+    { name: 'Fines', href: '/fines', icon: CreditCard },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
-  const filteredNavigation = navigation.filter(item => 
-    item.roles.includes(profile?.role || 'student')
-  );
-
-  const handleSignOut = async () => {
-    await signOut();
+  const toggleDarkMode = () => {
+    dispatch({ type: 'TOGGLE_DARK_MODE' });
   };
 
   return (
@@ -55,7 +52,7 @@ export default function Layout({ children }: LayoutProps) {
             </button>
           </div>
           <nav className="mt-5 px-2">
-            {filteredNavigation.map((item) => (
+            {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
@@ -70,13 +67,6 @@ export default function Layout({ children }: LayoutProps) {
                 {item.name}
               </Link>
             ))}
-            <button
-              onClick={handleSignOut}
-              className="w-full group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50/80 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700/80 mt-4"
-            >
-              <LogOut className="mr-4 h-6 w-6" />
-              Sign Out
-            </button>
           </nav>
         </div>
       </div>
@@ -89,7 +79,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           <div className="flex flex-col flex-grow">
             <nav className="flex-1 px-2 py-4 space-y-1">
-              {filteredNavigation.map((item) => (
+              {navigation.map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
@@ -106,11 +96,15 @@ export default function Layout({ children }: LayoutProps) {
             </nav>
             <div className="px-2 pb-4">
               <button
-                onClick={handleSignOut}
+                onClick={toggleDarkMode}
                 className="w-full group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50/80 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700/80"
               >
-                <LogOut className="mr-3 h-6 w-6" />
-                Sign Out
+                {state.darkMode ? (
+                  <Sun className="mr-3 h-6 w-6" />
+                ) : (
+                  <Moon className="mr-3 h-6 w-6" />
+                )}
+                {state.darkMode ? 'Light Mode' : 'Dark Mode'}
               </button>
             </div>
           </div>
@@ -134,13 +128,19 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
                   <div className="ml-4 lg:ml-0">
                     <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      Welcome, {profile?.name || 'User'}
+                      Library Management System
                     </h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {(profile?.role || 'student').charAt(0).toUpperCase() + (profile?.role || 'student').slice(1)} Dashboard
+                      Narula Institute of Technology
                     </p>
                   </div>
                 </div>
+                <button
+                  onClick={toggleDarkMode}
+                  className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100/80 dark:hover:bg-gray-700/80"
+                >
+                  {state.darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
               </div>
             </div>
           </div>
