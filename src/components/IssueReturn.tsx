@@ -1,9 +1,33 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
-import { Issue, Fine } from '../types';
 import { Search, BookOpen, RotateCcw, Calendar, AlertTriangle } from 'lucide-react';
 
+interface Issue {
+  id: string;
+  bookId: string;
+  studentId: string;
+  issueDate: string;
+  dueDate: string;
+  returnDate?: string;
+  fineAmount?: number;
+  finePaid: boolean;
+  status: 'issued' | 'returned' | 'overdue';
+}
+
+interface Fine {
+  id: string;
+  studentId: string;
+  issueId: string;
+  amount: number;
+  reason: string;
+  date: string;
+  paid: boolean;
+  paidDate?: string;
+}
+
 export default function IssueReturn() {
+  const { user } = useAuth();
   const { state, dispatch } = useLibrary();
   const [activeTab, setActiveTab] = useState<'issue' | 'return'>('issue');
   const [searchTerm, setSearchTerm] = useState('');
