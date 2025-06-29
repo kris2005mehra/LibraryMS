@@ -1,6 +1,9 @@
 import React from 'react';
-import { useStats } from '../hooks/useStats';
-import { useLibrary } from '../context/LibraryContext';
+import { useAuth } from '../context/AuthContext';
+import { useBooks } from '../hooks/useBooks';
+import { useIssues } from '../hooks/useIssues';
+import { useFines } from '../hooks/useFines';
+import { useProfiles } from '../hooks/useProfiles';
 import { 
   Book, 
   BookOpen, 
@@ -10,20 +13,36 @@ import {
   IndianRupee,
   CheckCircle,
   TrendingUp,
-  Moon,
-  Sun,
   Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const stats = useStats();
-  const { state, dispatch } = useLibrary();
+  const { profile } = useAuth();
+  const { books } = useBooks();
+  const { issues } = useIssues();
+  const { fines } = useFines();
+  const { profiles } = useProfiles();
   const navigate = useNavigate();
 
-  const toggleDarkMode = () => {
-    dispatch({ type: 'TOGGLE_DARK_MODE' });
-  };
+  // Calculate stats
+  const totalBooks = books.reduce((sum, book) => sum + book.total_copies, 0);
+  const issuedBooks = issues.filter(issue => issue.status === 'issued').length;
+  const overdueBooks = issues.filter(issue => {
+    if (issue.status !== 'issued') return false;
+    const dueDate = new Date(issue.due_date);
+    const currentDate = new Date();
+    return dueDate < currentDate;
+  }).length;
+  
+  const registeredStudents = profiles.filter(profile => profile.role === 'student').length;
+  const today = new Date().toISOString().split('T')[0];
+  const todayReturns = issues.filter(issue => 
+    issue.return_date && issue.return_date.startsWith(today)
+  ).length;
+  
+  const totalFines = fines.reduce((sum, fine) => sum + fine.amount, 0);
+  const paidFines = fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
 
   const StatCard = ({ 
     title, 
@@ -65,14 +84,14 @@ export default function Dashboard() {
     );
   };
 
-  const recentIssues = state.issues
+  const recentIssues = issues
     .filter(issue => issue.status === 'issued')
-    .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
+    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime())
     .slice(0, 5);
 
-  const overdueIssues = state.issues.filter(issue => {
+  const overdueIssues = issues.filter(issue => {
     if (issue.status !== 'issued') return false;
-    const dueDate = new Date(issue.dueDate);
+    const dueDate = new Date(issue.due_date);
     const currentDate = new Date();
     return dueDate < currentDate;
   });
@@ -89,28 +108,15 @@ export default function Dashboard() {
       
       {/* Content */}
       <div className="relative z-10 space-y-8 p-4 sm:p-6 lg:p-8">
-        {/* Welcome Header with Theme Toggle */}
+        {/* Welcome Header */}
         <div className="text-center py-8">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 relative">
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleDarkMode}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
-              title={state.darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {state.darkMode ? (
-                <Sun className="h-6 w-6 text-white" />
-              ) : (
-                <Moon className="h-6 w-6 text-white" />
-              )}
-            </button>
-            
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
               Narula Institute of Technology
             </h1>
             <p className="text-xl text-white/90 mb-4">Library Management System</p>
             <p className="text-lg text-white/80">
-              Welcome To The LMS, {state.user?.name || 'NiT'}
+              Welcome To The LMS, {profile?.name || 'Admin'}
             </p>
           </div>
         </div>
@@ -119,28 +125,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Books"
-            value={stats.totalBooks}
+            value={totalBooks}
             icon={Book}
             color="blue"
             subtitle="In collection"
           />
           <StatCard
             title="Issued Books"
-            value={stats.issuedBooks}
+            value={issuedBooks}
             icon={BookOpen}
             color="green"
             subtitle="Currently out"
           />
           <StatCard
             title="Overdue Books"
-            value={stats.overdueBooks}
+            value={overdueBooks}
             icon={AlertTriangle}
             color="red"
             subtitle="Past due date"
           />
           <StatCard
             title="Registered Students"
-            value={stats.registeredStudents}
+            value={registeredStudents}
             icon={Users}
             color="purple"
             subtitle="Active members"
@@ -150,28 +156,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Today's Returns"
-            value={stats.todayReturns}
+            value={todayReturns}
             icon={RotateCcw}
             color="indigo"
             subtitle="Books returned today"
           />
           <StatCard
             title="Total Fines"
-            value={stats.totalFines}
+            value={totalFines}
             icon={IndianRupee}
             color="yellow"
             subtitle="₹ Outstanding"
           />
           <StatCard
             title="Paid Fines"
-            value={stats.paidFines}
+            value={paidFines}
             icon={CheckCircle}
             color="green"
             subtitle="₹ Collected"
           />
           <StatCard
             title="Collection Rate"
-            value={Math.round((stats.paidFines / (stats.totalFines || 1)) * 100)}
+            value={Math.round((paidFines / (totalFines || 1)) * 100)}
             icon={TrendingUp}
             color="blue"
             subtitle="% fines collected"
@@ -188,24 +194,19 @@ export default function Dashboard() {
             <div className="p-6">
               {recentIssues.length > 0 ? (
                 <div className="space-y-4">
-                  {recentIssues.map((issue) => {
-                    const book = state.books.find(b => b.id === issue.bookId);
-                    const student = state.users.find(u => u.id === issue.studentId);
-                    
-                    return (
-                      <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50/80 dark:bg-gray-700/80 rounded-lg backdrop-blur-sm">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Issued to {student?.name} on {new Date(issue.issueDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">
-                          Due: {new Date(issue.dueDate).toLocaleDateString()}
-                        </div>
+                  {recentIssues.map((issue: any) => (
+                    <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50/80 dark:bg-gray-700/80 rounded-lg backdrop-blur-sm">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{issue.books?.title}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Issued to {issue.profiles?.name} on {new Date(issue.issue_date).toLocaleDateString()}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        Due: {new Date(issue.due_date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-gray-600 dark:text-gray-300 text-center py-4">No recent issues</p>
@@ -224,17 +225,15 @@ export default function Dashboard() {
             <div className="p-6">
               {overdueIssues.length > 0 ? (
                 <div className="space-y-4">
-                  {overdueIssues.slice(0, 5).map((issue) => {
-                    const book = state.books.find(b => b.id === issue.bookId);
-                    const student = state.users.find(u => u.id === issue.studentId);
-                    const daysOverdue = Math.floor((new Date().getTime() - new Date(issue.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+                  {overdueIssues.slice(0, 5).map((issue: any) => {
+                    const daysOverdue = Math.floor((new Date().getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24));
                     
                     return (
                       <div key={issue.id} className="flex items-center justify-between p-3 bg-red-50/80 dark:bg-red-900/80 border border-red-200/50 dark:border-red-700/50 rounded-lg backdrop-blur-sm">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{book?.title}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{issue.books?.title}</p>
                           <p className="text-sm text-gray-700 dark:text-gray-200">
-                            {student?.name} • {daysOverdue} days overdue
+                            {issue.profiles?.name} • {daysOverdue} days overdue
                           </p>
                         </div>
                         <div className="text-sm font-medium text-red-600 dark:text-red-400">
@@ -252,7 +251,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+        {(profile?.role === 'admin' || profile?.role === 'librarian') && (
           <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

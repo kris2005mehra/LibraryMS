@@ -1,33 +1,40 @@
 import React, { useState } from 'react';
-import { useLibrary } from '../context/LibraryContext';
-import { Issue, Fine } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { useBooks } from '../hooks/useBooks';
+import { useIssues } from '../hooks/useIssues';
+import { useFines } from '../hooks/useFines';
+import { useProfiles } from '../hooks/useProfiles';
 import { Search, BookOpen, RotateCcw, Calendar, AlertTriangle } from 'lucide-react';
 
 export default function IssueReturn() {
-  const { state, dispatch } = useLibrary();
+  const { profile } = useAuth();
+  const { books, updateBook } = useBooks();
+  const { issues, addIssue, updateIssue } = useIssues();
+  const { addFine } = useFines();
+  const { profiles } = useProfiles();
   const [activeTab, setActiveTab] = useState<'issue' | 'return'>('issue');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedBook, setSelectedBook] = useState('');
   const [daysToIssue, setDaysToIssue] = useState(14);
 
-  const students = state.users.filter(user => user.role === 'student');
-  const availableBooks = state.books.filter(book => book.stock > 0);
-  const issuedBooks = state.issues.filter(issue => issue.status === 'issued');
+  const students = profiles.filter(profile => profile.role === 'student');
+  const availableBooks = books.filter(book => book.stock > 0);
+  const issuedBooks = issues.filter(issue => issue.status === 'issued');
 
   const filteredIssuedBooks = issuedBooks.filter(issue => {
-    const book = state.books.find(b => b.id === issue.bookId);
-    const student = state.users.find(u => u.id === issue.studentId);
+    const book = books.find(b => b.id === issue.book_id);
+    const student = profiles.find(u => u.id === issue.student_id);
     
     if (!book || !student) return false;
     
     const searchLower = searchTerm.toLowerCase();
     return book.title.toLowerCase().includes(searchLower) ||
            student.name.toLowerCase().includes(searchLower) ||
-           student.rollNo?.toLowerCase().includes(searchLower);
+           student.roll_no?.toLowerCase().includes(searchLower);
   });
 
-  const handleIssueBook = (e: React.FormEvent) => {
+  const handleIssueBook = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedStudent || !selectedBook) {
@@ -35,28 +42,11 @@ export default function IssueReturn() {
       return;
     }
 
-    const student = state.users.find(u => u.id === selectedStudent);
-    const book = state.books.find(b => b.id === selectedBook);
+    const student = profiles.find(u => u.id === selectedStudent);
+    const book = books.find(b => b.id === selectedBook);
     
     if (!student || !book) {
       alert('Invalid student or book selection');
-      return;
-    }
-
-    // Check if student has overdue books or unpaid fines
-    const studentOverdueBooks = state.issues.filter(issue => {
-      if (issue.studentId !== selectedStudent || issue.status !== 'issued') return false;
-      const dueDate = new Date(issue.dueDate);
-      const currentDate = new Date();
-      return dueDate < currentDate;
-    });
-
-    const unpaidFines = state.fines.filter(fine => 
-      fine.studentId === selectedStudent && !fine.paid
-    );
-
-    if (studentOverdueBooks.length > 0 || unpaidFines.length > 0) {
-      alert('Student has overdue books or unpaid fines. Please resolve before issuing new books.');
       return;
     }
 
@@ -66,81 +56,79 @@ export default function IssueReturn() {
       return;
     }
 
-    const issueDate = new Date();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + daysToIssue);
+    try {
+      const issueDate = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + daysToIssue);
 
-    const newIssue: Issue = {
-      id: Date.now().toString(),
-      bookId: selectedBook,
-      studentId: selectedStudent,
-      issueDate: issueDate.toISOString(),
-      dueDate: dueDate.toISOString(),
-      status: 'issued',
-      finePaid: false,
-    };
+      // Add issue
+      await addIssue({
+        book_id: selectedBook,
+        student_id: selectedStudent,
+        issue_date: issueDate.toISOString(),
+        due_date: dueDate.toISOString(),
+        status: 'issued',
+        fine_paid: false,
+      });
 
-    // Update book stock
-    const updatedBook = { ...book, stock: book.stock - 1 };
-    
-    dispatch({ type: 'ADD_ISSUE', payload: newIssue });
-    dispatch({ type: 'UPDATE_BOOK', payload: updatedBook });
+      // Update book stock
+      await updateBook(selectedBook, { stock: book.stock - 1 });
 
-    // Reset form
-    setSelectedStudent('');
-    setSelectedBook('');
-    setDaysToIssue(14);
-    
-    alert('Book issued successfully!');
+      // Reset form
+      setSelectedStudent('');
+      setSelectedBook('');
+      setDaysToIssue(14);
+      
+      alert('Book issued successfully!');
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
-  const handleReturnBook = (issueId: string) => {
-    const issue = state.issues.find(i => i.id === issueId);
+  const handleReturnBook = async (issueId: string) => {
+    const issue = issues.find(i => i.id === issueId);
     if (!issue) return;
 
-    const book = state.books.find(b => b.id === issue.bookId);
+    const book = books.find(b => b.id === issue.book_id);
     if (!book) return;
 
-    const returnDate = new Date();
-    const dueDate = new Date(issue.dueDate);
-    const isOverdue = returnDate > dueDate;
-    
-    let fineAmount = 0;
-    if (isOverdue) {
-      const daysOverdue = Math.ceil((returnDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      fineAmount = daysOverdue * 2; // ₹2 per day
+    try {
+      const returnDate = new Date();
+      const dueDate = new Date(issue.due_date);
+      const isOverdue = returnDate > dueDate;
+      
+      let fineAmount = 0;
+      if (isOverdue) {
+        const daysOverdue = Math.ceil((returnDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        fineAmount = daysOverdue * 2; // ₹2 per day
+      }
+
+      // Update issue status
+      await updateIssue(issueId, {
+        status: 'returned',
+        return_date: returnDate.toISOString(),
+        fine_amount: fineAmount,
+        fine_paid: fineAmount === 0,
+      });
+
+      // Update book stock
+      await updateBook(issue.book_id, { stock: book.stock + 1 });
+
+      // Add fine if applicable
+      if (fineAmount > 0) {
+        await addFine({
+          student_id: issue.student_id,
+          issue_id: issueId,
+          amount: fineAmount,
+          reason: 'Late return fine',
+          paid: false,
+        });
+      }
+
+      alert(`Book returned successfully! ${fineAmount > 0 ? `Fine: ₹${fineAmount}` : 'No fine.'}`);
+    } catch (error: any) {
+      alert(error.message);
     }
-
-    // Update issue status
-    const updatedIssue: Issue = {
-      ...issue,
-      status: 'returned',
-      returnDate: returnDate.toISOString(),
-      fineAmount: fineAmount,
-      finePaid: fineAmount === 0,
-    };
-
-    // Update book stock
-    const updatedBook = { ...book, stock: book.stock + 1 };
-
-    dispatch({ type: 'UPDATE_ISSUE', payload: updatedIssue });
-    dispatch({ type: 'UPDATE_BOOK', payload: updatedBook });
-
-    // Add fine if applicable
-    if (fineAmount > 0) {
-      const newFine: Fine = {
-        id: Date.now().toString(),
-        studentId: issue.studentId,
-        issueId: issueId,
-        amount: fineAmount,
-        reason: 'Late return fine',
-        date: returnDate.toISOString(),
-        paid: false,
-      };
-      dispatch({ type: 'ADD_FINE', payload: newFine });
-    }
-
-    alert(`Book returned successfully! ${fineAmount > 0 ? `Fine: ₹${fineAmount}` : 'No fine.'}`);
   };
 
   const calculateFine = (dueDate: string) => {
@@ -207,7 +195,7 @@ export default function IssueReturn() {
                       <option value="">Choose a student...</option>
                       {students.map(student => (
                         <option key={student.id} value={student.id}>
-                          {student.name} ({student.rollNo}) - {student.department}
+                          {student.name} ({student.roll_no}) - {student.department}
                         </option>
                       ))}
                     </select>
@@ -284,10 +272,10 @@ export default function IssueReturn() {
               {/* Issued Books List */}
               <div className="space-y-4">
                 {filteredIssuedBooks.length > 0 ? (
-                  filteredIssuedBooks.map((issue) => {
-                    const book = state.books.find(b => b.id === issue.bookId);
-                    const student = state.users.find(u => u.id === issue.studentId);
-                    const fine = calculateFine(issue.dueDate);
+                  filteredIssuedBooks.map((issue: any) => {
+                    const book = books.find(b => b.id === issue.book_id);
+                    const student = profiles.find(u => u.id === issue.student_id);
+                    const fine = calculateFine(issue.due_date);
                     const isOverdue = fine > 0;
                     
                     if (!book || !student) return null;
@@ -311,13 +299,13 @@ export default function IssueReturn() {
                             </p>
                             <div className="mt-2 space-y-1 text-sm">
                               <p className="text-gray-700 dark:text-gray-300">
-                                <span className="font-medium">Student:</span> {student.name} ({student.rollNo})
+                                <span className="font-medium">Student:</span> {student.name} ({student.roll_no})
                               </p>
                               <p className="text-gray-700 dark:text-gray-300">
-                                <span className="font-medium">Issue Date:</span> {new Date(issue.issueDate).toLocaleDateString()}
+                                <span className="font-medium">Issue Date:</span> {new Date(issue.issue_date).toLocaleDateString()}
                               </p>
                               <p className={`${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'}`}>
-                                <span className="font-medium">Due Date:</span> {new Date(issue.dueDate).toLocaleDateString()}
+                                <span className="font-medium">Due Date:</span> {new Date(issue.due_date).toLocaleDateString()}
                                 {isOverdue && (
                                   <span className="ml-2 inline-flex items-center">
                                     <AlertTriangle className="h-4 w-4 mr-1" />

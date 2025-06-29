@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import { useLibrary } from '../context/LibraryContext';
-import { Fine } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { useFines } from '../hooks/useFines';
 import { Search, IndianRupee, CheckCircle, Clock, Download } from 'lucide-react';
 
 export default function Fines() {
-  const { state, dispatch } = useLibrary();
+  const { profile } = useAuth();
+  const { fines, updateFine } = useFines();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
 
-  const filteredFines = state.fines.filter(fine => {
-    const student = state.users.find(u => u.id === fine.studentId);
-    const issue = state.issues.find(i => i.id === fine.issueId);
-    const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
+  const filteredFines = fines.filter(fine => {
+    const student = fine.profiles;
+    const book = fine.issues?.books;
     
     if (!student) return false;
     
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (student.rollNo && student.rollNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (student.roll_no && student.roll_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
                          (book && book.title.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || 
@@ -26,28 +26,19 @@ export default function Fines() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalFines = state.fines.reduce((sum, fine) => sum + fine.amount, 0);
-  const paidFines = state.fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
+  const totalFines = fines.reduce((sum, fine) => sum + fine.amount, 0);
+  const paidFines = fines.filter(fine => fine.paid).reduce((sum, fine) => sum + fine.amount, 0);
   const unpaidFines = totalFines - paidFines;
 
-  const handleMarkAsPaid = (fineId: string) => {
-    const fine = state.fines.find(f => f.id === fineId);
-    if (!fine) return;
-
-    const updatedFine: Fine = {
-      ...fine,
-      paid: true,
-      paidDate: new Date().toISOString(),
-    };
-
-    // Also update the related issue
-    const issue = state.issues.find(i => i.id === fine.issueId);
-    if (issue) {
-      const updatedIssue = { ...issue, finePaid: true };
-      dispatch({ type: 'UPDATE_ISSUE', payload: updatedIssue });
+  const handleMarkAsPaid = async (fineId: string) => {
+    try {
+      await updateFine(fineId, {
+        paid: true,
+        paid_date: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      alert(error.message);
     }
-
-    dispatch({ type: 'UPDATE_FINE', payload: updatedFine });
   };
 
   const generateFineReport = () => {
@@ -55,18 +46,17 @@ export default function Fines() {
     const csvContent = [
       ['Student Name', 'Roll No', 'Book Title', 'Fine Amount', 'Date', 'Status', 'Paid Date'].join(','),
       ...filteredFines.map(fine => {
-        const student = state.users.find(u => u.id === fine.studentId);
-        const issue = state.issues.find(i => i.id === fine.issueId);
-        const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
+        const student = fine.profiles;
+        const book = fine.issues?.books;
         
         return [
           student?.name || 'Unknown',
-          student?.rollNo || 'N/A',
+          student?.roll_no || 'N/A',
           book?.title || 'Unknown Book',
           fine.amount,
-          new Date(fine.date).toLocaleDateString(),
+          new Date(fine.created_at).toLocaleDateString(),
           fine.paid ? 'Paid' : 'Unpaid',
-          fine.paidDate ? new Date(fine.paidDate).toLocaleDateString() : 'N/A'
+          fine.paid_date ? new Date(fine.paid_date).toLocaleDateString() : 'N/A'
         ].join(',');
       })
     ].join('\n');
@@ -83,8 +73,8 @@ export default function Fines() {
   };
 
   // Check if current user is a student and filter their fines
-  const userFines = state.user?.role === 'student' 
-    ? filteredFines.filter(fine => fine.studentId === state.user?.id)
+  const userFines = profile?.role === 'student' 
+    ? filteredFines.filter(fine => fine.student_id === profile?.id)
     : filteredFines;
 
   return (
@@ -92,7 +82,7 @@ export default function Fines() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fines Management</h1>
-        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+        {(profile?.role === 'admin' || profile?.role === 'librarian') && (
           <button
             onClick={generateFineReport}
             className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -143,7 +133,7 @@ export default function Fines() {
       </div>
 
       {/* Search and Filters */}
-      {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+      {(profile?.role === 'admin' || profile?.role === 'librarian') && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
@@ -178,16 +168,15 @@ export default function Fines() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            {state.user?.role === 'student' ? 'My Fines' : 'All Fines'}
+            {profile?.role === 'student' ? 'My Fines' : 'All Fines'}
           </h3>
         </div>
         
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {userFines.length > 0 ? (
-            userFines.map((fine) => {
-              const student = state.users.find(u => u.id === fine.studentId);
-              const issue = state.issues.find(i => i.id === fine.issueId);
-              const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
+            userFines.map((fine: any) => {
+              const student = fine.profiles;
+              const book = fine.issues?.books;
               
               if (!student) return null;
 
@@ -209,9 +198,9 @@ export default function Fines() {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+                        {(profile?.role === 'admin' || profile?.role === 'librarian') && (
                           <div>
-                            <span className="font-medium">Student:</span> {student.name} ({student.rollNo})
+                            <span className="font-medium">Student:</span> {student.name} ({student.roll_no})
                           </div>
                         )}
                         <div>
@@ -221,18 +210,18 @@ export default function Fines() {
                           <span className="font-medium">Reason:</span> {fine.reason}
                         </div>
                         <div>
-                          <span className="font-medium">Date:</span> {new Date(fine.date).toLocaleDateString()}
+                          <span className="font-medium">Date:</span> {new Date(fine.created_at).toLocaleDateString()}
                         </div>
                       </div>
                       
-                      {fine.paid && fine.paidDate && (
+                      {fine.paid && fine.paid_date && (
                         <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                          <span className="font-medium">Paid on:</span> {new Date(fine.paidDate).toLocaleDateString()}
+                          <span className="font-medium">Paid on:</span> {new Date(fine.paid_date).toLocaleDateString()}
                         </div>
                       )}
                     </div>
                     
-                    {!fine.paid && (state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+                    {!fine.paid && (profile?.role === 'admin' || profile?.role === 'librarian') && (
                       <button
                         onClick={() => handleMarkAsPaid(fine.id)}
                         className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -249,7 +238,7 @@ export default function Fines() {
               <IndianRupee className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No fines found</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {state.user?.role === 'student' 
+                {profile?.role === 'student' 
                   ? 'You have no fines at the moment.'
                   : searchTerm || statusFilter !== 'all' 
                     ? 'Try adjusting your search criteria.' 

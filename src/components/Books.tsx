@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { useLibrary } from '../context/LibraryContext';
-import { Book as BookType, User } from '../types';
-import { Search, Plus, Edit, Trash2, Eye, Filter } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useBooks } from '../hooks/useBooks';
+import { Search, Plus, Edit, Trash2, Filter } from 'lucide-react';
 
 export default function Books() {
-  const { state, dispatch } = useLibrary();
+  const { profile } = useAuth();
+  const { books, loading, addBook, updateBook, deleteBook } = useBooks();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<BookType | null>(null);
+  const [selectedBook, setSelectedBook] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [bookForm, setBookForm] = useState({
@@ -19,15 +20,15 @@ export default function Books() {
     category: '',
     publisher: '',
     year: new Date().getFullYear(),
-    totalCopies: 1,
+    total_copies: 1,
     description: '',
-    imageUrl: '',
+    image_url: '',
   });
 
-  const categories = [...new Set(state.books.map(book => book.category))];
-  const canEdit = state.user?.role === 'admin' || state.user?.role === 'librarian';
+  const categories = [...new Set(books.map(book => book.category))];
+  const canEdit = profile?.role === 'admin' || profile?.role === 'librarian';
 
-  const filteredBooks = state.books.filter(book => {
+  const filteredBooks = books.filter(book => {
     const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          book.isbn.includes(searchTerm);
@@ -35,58 +36,47 @@ export default function Books() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleAddBook = (e: React.FormEvent) => {
+  const handleAddBook = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check for duplicate ISBN
-    if (state.books.some(book => book.isbn === bookForm.isbn)) {
-      alert('A book with this ISBN already exists');
-      return;
+    try {
+      await addBook({
+        ...bookForm,
+        stock: bookForm.total_copies,
+      });
+      setShowAddModal(false);
+      resetForm();
+    } catch (error: any) {
+      alert(error.message);
     }
-
-    const newBook: BookType = {
-      id: Date.now().toString(),
-      ...bookForm,
-      stock: bookForm.totalCopies,
-      addedDate: new Date().toISOString(),
-    };
-
-    dispatch({ type: 'ADD_BOOK', payload: newBook });
-    setShowAddModal(false);
-    resetForm();
   };
 
-  const handleEditBook = (e: React.FormEvent) => {
+  const handleEditBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBook) return;
 
-    const updatedBook: BookType = {
-      ...selectedBook,
-      ...bookForm,
-      stock: selectedBook.stock + (bookForm.totalCopies - selectedBook.totalCopies),
-    };
-
-    dispatch({ type: 'UPDATE_BOOK', payload: updatedBook });
-    setShowEditModal(false);
-    resetForm();
+    try {
+      await updateBook(selectedBook.id, {
+        ...bookForm,
+        stock: selectedBook.stock + (bookForm.total_copies - selectedBook.total_copies),
+      });
+      setShowEditModal(false);
+      resetForm();
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
-  const handleDeleteBook = () => {
+  const handleDeleteBook = async () => {
     if (!selectedBook) return;
     
-    // Check if book is currently issued
-    const isIssued = state.issues.some(issue => 
-      issue.bookId === selectedBook.id && issue.status === 'issued'
-    );
-    
-    if (isIssued) {
-      alert('Cannot delete book that is currently issued');
-      return;
+    try {
+      await deleteBook(selectedBook.id);
+      setShowDeleteConfirm(false);
+      setSelectedBook(null);
+    } catch (error: any) {
+      alert(error.message);
     }
-
-    dispatch({ type: 'DELETE_BOOK', payload: selectedBook.id });
-    setShowDeleteConfirm(false);
-    setSelectedBook(null);
   };
 
   const resetForm = () => {
@@ -97,14 +87,14 @@ export default function Books() {
       category: '',
       publisher: '',
       year: new Date().getFullYear(),
-      totalCopies: 1,
+      total_copies: 1,
       description: '',
-      imageUrl: '',
+      image_url: '',
     });
     setSelectedBook(null);
   };
 
-  const openEditModal = (book: BookType) => {
+  const openEditModal = (book: any) => {
     setSelectedBook(book);
     setBookForm({
       isbn: book.isbn,
@@ -113,12 +103,20 @@ export default function Books() {
       category: book.category,
       publisher: book.publisher,
       year: book.year,
-      totalCopies: book.totalCopies,
+      total_copies: book.total_copies,
       description: book.description || '',
-      imageUrl: book.imageUrl || '',
+      image_url: book.image_url || '',
     });
     setShowEditModal(true);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -163,7 +161,7 @@ export default function Books() {
             </select>
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-            Showing {filteredBooks.length} of {state.books.length} books
+            Showing {filteredBooks.length} of {books.length} books
           </div>
         </div>
       </div>
@@ -173,10 +171,10 @@ export default function Books() {
         {filteredBooks.map((book) => (
           <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow duration-200">
             {/* Book Image */}
-            {book.imageUrl && (
+            {book.image_url && (
               <div className="h-48 overflow-hidden">
                 <img
-                  src={book.imageUrl}
+                  src={book.image_url}
                   alt={book.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
@@ -205,7 +203,7 @@ export default function Books() {
                 <p><span className="font-medium">Publisher:</span> {book.publisher}</p>
                 <p><span className="font-medium">Year:</span> {book.year}</p>
                 <p><span className="font-medium">ISBN:</span> {book.isbn}</p>
-                <p><span className="font-medium">Stock:</span> {book.stock}/{book.totalCopies}</p>
+                <p><span className="font-medium">Stock:</span> {book.stock}/{book.total_copies}</p>
               </div>
 
               {book.description && (
@@ -329,8 +327,8 @@ export default function Books() {
                     type="number"
                     required
                     min="1"
-                    value={bookForm.totalCopies}
-                    onChange={(e) => setBookForm({ ...bookForm, totalCopies: parseInt(e.target.value) })}
+                    value={bookForm.total_copies}
+                    onChange={(e) => setBookForm({ ...bookForm, total_copies: parseInt(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
@@ -338,8 +336,8 @@ export default function Books() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
                   <input
                     type="url"
-                    value={bookForm.imageUrl}
-                    onChange={(e) => setBookForm({ ...bookForm, imageUrl: e.target.value })}
+                    value={bookForm.image_url}
+                    onChange={(e) => setBookForm({ ...bookForm, image_url: e.target.value })}
                     placeholder="https://example.com/book-image.jpg"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
@@ -452,8 +450,8 @@ export default function Books() {
                     type="number"
                     required
                     min="1"
-                    value={bookForm.totalCopies}
-                    onChange={(e) => setBookForm({ ...bookForm, totalCopies: parseInt(e.target.value) })}
+                    value={bookForm.total_copies}
+                    onChange={(e) => setBookForm({ ...bookForm, total_copies: parseInt(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
@@ -461,8 +459,8 @@ export default function Books() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
                   <input
                     type="url"
-                    value={bookForm.imageUrl}
-                    onChange={(e) => setBookForm({ ...bookForm, imageUrl: e.target.value })}
+                    value={bookForm.image_url}
+                    onChange={(e) => setBookForm({ ...bookForm, image_url: e.target.value })}
                     placeholder="https://example.com/book-image.jpg"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
