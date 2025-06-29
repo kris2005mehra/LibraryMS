@@ -70,11 +70,13 @@ interface LibraryState {
   darkMode: boolean;
   loading: boolean;
   error: string | null;
+  dataLoaded: boolean;
 }
 
 type LibraryAction = 
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_DATA_LOADED'; payload: boolean }
   | { type: 'SET_USERS'; payload: User[] }
   | { type: 'SET_BOOKS'; payload: Book[] }
   | { type: 'SET_ISSUES'; payload: Issue[] }
@@ -89,7 +91,8 @@ type LibraryAction =
   | { type: 'UPDATE_ISSUE'; payload: Issue }
   | { type: 'ADD_FINE'; payload: Fine }
   | { type: 'UPDATE_FINE'; payload: Fine }
-  | { type: 'TOGGLE_DARK_MODE' };
+  | { type: 'TOGGLE_DARK_MODE' }
+  | { type: 'RESET_STATE' };
 
 const initialState: LibraryState = {
   users: [],
@@ -106,8 +109,9 @@ const initialState: LibraryState = {
     paidFines: 0,
   },
   darkMode: false,
-  loading: true,
+  loading: false,
   error: null,
+  dataLoaded: false,
 };
 
 function libraryReducer(state: LibraryState, action: LibraryAction): LibraryState {
@@ -116,6 +120,8 @@ function libraryReducer(state: LibraryState, action: LibraryAction): LibraryStat
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'SET_DATA_LOADED':
+      return { ...state, dataLoaded: action.payload };
     case 'SET_USERS':
       return { ...state, users: action.payload };
     case 'SET_BOOKS':
@@ -172,6 +178,8 @@ function libraryReducer(state: LibraryState, action: LibraryAction): LibraryStat
       };
     case 'TOGGLE_DARK_MODE':
       return { ...state, darkMode: !state.darkMode };
+    case 'RESET_STATE':
+      return { ...initialState, darkMode: state.darkMode };
     default:
       return state;
   }
@@ -196,10 +204,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
   }, [state.darkMode]);
 
-  // Fetch data from Supabase
+  // Fetch data from Supabase with better error handling
   const refreshData = async () => {
     if (!user) {
       dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_DATA_LOADED', payload: true });
       return;
     }
 
@@ -207,19 +216,30 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
 
-      // Fetch all data in parallel
-      const [usersResponse, booksResponse, issuesResponse, finesResponse] = await Promise.all([
-        supabase.from('users').select('*').order('created_at', { ascending: false }),
-        supabase.from('books').select('*').order('created_at', { ascending: false }),
-        supabase.from('issues').select('*').order('created_at', { ascending: false }),
-        supabase.from('fines').select('*').order('created_at', { ascending: false })
+      console.log('Starting data fetch for user:', user.email);
+
+      // Fetch data with timeout and better error handling
+      const fetchWithTimeout = async (promise: Promise<any>, timeout = 10000) => {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), timeout)
+          )
+        ]);
+      };
+
+      // Fetch all data with individual error handling
+      const results = await Promise.allSettled([
+        fetchWithTimeout(supabase.from('users').select('*').order('created_at', { ascending: false })),
+        fetchWithTimeout(supabase.from('books').select('*').order('created_at', { ascending: false })),
+        fetchWithTimeout(supabase.from('issues').select('*').order('created_at', { ascending: false })),
+        fetchWithTimeout(supabase.from('fines').select('*').order('created_at', { ascending: false }))
       ]);
 
       // Handle users
-      if (usersResponse.error) {
-        console.error('Error fetching users:', usersResponse.error);
-      } else if (usersResponse.data) {
-        const users: User[] = usersResponse.data.map(u => ({
+      const usersResult = results[0];
+      if (usersResult.status === 'fulfilled' && usersResult.value.data) {
+        const users: User[] = usersResult.value.data.map((u: any) => ({
           id: u.id,
           name: u.name,
           email: u.email,
@@ -230,13 +250,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           joinDate: u.created_at,
         }));
         dispatch({ type: 'SET_USERS', payload: users });
+        console.log('Users loaded:', users.length);
+      } else {
+        console.warn('Failed to load users:', usersResult.status === 'rejected' ? usersResult.reason : 'No data');
+        dispatch({ type: 'SET_USERS', payload: [] });
       }
 
       // Handle books
-      if (booksResponse.error) {
-        console.error('Error fetching books:', booksResponse.error);
-      } else if (booksResponse.data) {
-        const books: Book[] = booksResponse.data.map(b => ({
+      const booksResult = results[1];
+      if (booksResult.status === 'fulfilled' && booksResult.value.data) {
+        const books: Book[] = booksResult.value.data.map((b: any) => ({
           id: b.id,
           isbn: b.isbn,
           title: b.title,
@@ -251,13 +274,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           imageUrl: b.image_url,
         }));
         dispatch({ type: 'SET_BOOKS', payload: books });
+        console.log('Books loaded:', books.length);
+      } else {
+        console.warn('Failed to load books:', booksResult.status === 'rejected' ? booksResult.reason : 'No data');
+        dispatch({ type: 'SET_BOOKS', payload: [] });
       }
 
       // Handle issues
-      if (issuesResponse.error) {
-        console.error('Error fetching issues:', issuesResponse.error);
-      } else if (issuesResponse.data) {
-        const issues: Issue[] = issuesResponse.data.map(i => ({
+      const issuesResult = results[2];
+      if (issuesResult.status === 'fulfilled' && issuesResult.value.data) {
+        const issues: Issue[] = issuesResult.value.data.map((i: any) => ({
           id: i.id,
           bookId: i.book_id,
           studentId: i.student_id,
@@ -269,13 +295,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           status: i.status,
         }));
         dispatch({ type: 'SET_ISSUES', payload: issues });
+        console.log('Issues loaded:', issues.length);
+      } else {
+        console.warn('Failed to load issues:', issuesResult.status === 'rejected' ? issuesResult.reason : 'No data');
+        dispatch({ type: 'SET_ISSUES', payload: [] });
       }
 
       // Handle fines
-      if (finesResponse.error) {
-        console.error('Error fetching fines:', finesResponse.error);
-      } else if (finesResponse.data) {
-        const fines: Fine[] = finesResponse.data.map(f => ({
+      const finesResult = results[3];
+      if (finesResult.status === 'fulfilled' && finesResult.value.data) {
+        const fines: Fine[] = finesResult.value.data.map((f: any) => ({
           id: f.id,
           studentId: f.student_id,
           issueId: f.issue_id,
@@ -286,29 +315,33 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           paidDate: f.paid_date,
         }));
         dispatch({ type: 'SET_FINES', payload: fines });
+        console.log('Fines loaded:', fines.length);
+      } else {
+        console.warn('Failed to load fines:', finesResult.status === 'rejected' ? finesResult.reason : 'No data');
+        dispatch({ type: 'SET_FINES', payload: [] });
       }
+
+      console.log('Data fetch completed successfully');
 
     } catch (error) {
       console.error('Error fetching data:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load library data' });
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load library data. Please try refreshing.' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_DATA_LOADED', payload: true });
     }
   };
 
   // Load data when user changes
   useEffect(() => {
-    if (user) {
+    if (user && !state.dataLoaded) {
+      console.log('User authenticated, loading data...');
       refreshData();
-    } else {
+    } else if (!user) {
       // Reset state when user logs out
-      dispatch({ type: 'SET_USERS', payload: [] });
-      dispatch({ type: 'SET_BOOKS', payload: [] });
-      dispatch({ type: 'SET_ISSUES', payload: [] });
-      dispatch({ type: 'SET_FINES', payload: [] });
-      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'RESET_STATE' });
     }
-  }, [user]);
+  }, [user, state.dataLoaded]);
 
   return (
     <LibraryContext.Provider value={{ state, dispatch, refreshData }}>

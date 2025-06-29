@@ -93,7 +93,8 @@ export default function Dashboard() {
     return dueDate < currentDate;
   });
 
-  if (state.loading) {
+  // Show loading state
+  if (state.loading && !state.dataLoaded) {
     return (
       <div 
         className="min-h-screen bg-cover bg-center bg-fixed relative flex items-center justify-center"
@@ -104,13 +105,15 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
         <div className="relative z-10 text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-white mb-4 mx-auto"></div>
-          <p className="text-white text-xl">Loading library data...</p>
+          <p className="text-white text-xl font-semibold">Loading library data...</p>
+          <p className="text-white/80 text-sm mt-2">Please wait while we fetch your data</p>
         </div>
       </div>
     );
   }
 
-  if (state.error) {
+  // Show error state with retry option
+  if (state.error && !state.dataLoaded) {
     return (
       <div 
         className="min-h-screen bg-cover bg-center bg-fixed relative flex items-center justify-center"
@@ -119,17 +122,28 @@ export default function Dashboard() {
         }}
       >
         <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
-        <div className="relative z-10 text-center">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            <p className="font-bold">Error loading data</p>
-            <p>{state.error}</p>
+        <div className="relative z-10 text-center max-w-md mx-auto p-6">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 border border-white/20">
+            <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Data</h3>
+            <p className="text-gray-600 mb-6">{state.error}</p>
+            <div className="space-y-3">
+              <button
+                onClick={handleRefresh}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleRefresh}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-          >
-            Try Again
-          </button>
         </div>
       </div>
     );
@@ -154,10 +168,11 @@ export default function Dashboard() {
             <div className="absolute top-4 right-4 flex space-x-2">
               <button
                 onClick={handleRefresh}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
+                disabled={state.loading}
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200 disabled:opacity-50"
                 title="Refresh Data"
               >
-                <RefreshCw className="h-6 w-6 text-white" />
+                <RefreshCw className={`h-6 w-6 text-white ${state.loading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={toggleDarkMode}
@@ -366,6 +381,16 @@ export default function Dashboard() {
                 </div>
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Data Status Indicator */}
+        {state.dataLoaded && (
+          <div className="text-center">
+            <p className="text-white/60 text-sm">
+              Data last updated: {new Date().toLocaleTimeString()}
+              {state.loading && <span className="ml-2">• Refreshing...</span>}
+            </p>
           </div>
         )}
       </div>
