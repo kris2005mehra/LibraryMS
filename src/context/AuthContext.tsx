@@ -28,6 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if Supabase is properly configured
+    const isSupabaseConfigured = () => {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      return url && key && url !== 'your_supabase_project_url_here' && key !== 'your_supabase_anon_key_here';
+    };
+
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured properly');
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);

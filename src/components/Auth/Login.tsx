@@ -22,10 +22,24 @@ export default function Login({ onLogin }: LoginProps) {
     contact: '',
   });
 
+  // Check if Supabase is properly configured
+  const isSupabaseConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    return url && key && url !== 'your_supabase_project_url_here' && key !== 'your_supabase_anon_key_here';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+      setError('Supabase is not configured. Please set up your environment variables.');
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isLogin) {
@@ -144,6 +158,21 @@ export default function Login({ onLogin }: LoginProps) {
             </div>
           </div>
         </div>
+
+        {/* Supabase Configuration Warning */}
+        {!isSupabaseConfigured() && (
+          <div className="mb-6 p-4 bg-red-50/90 backdrop-blur-md border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              <div>
+                <h4 className="text-sm font-medium text-red-800">Database Not Connected</h4>
+                <p className="text-xs text-red-700 mt-1">
+                  Please click "Connect to Supabase" in the top right to set up your database connection.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Type Toggle */}
         <div className="bg-white/10 backdrop-blur-md rounded-lg p-1 mb-6 border border-white/20">
@@ -306,7 +335,7 @@ export default function Login({ onLogin }: LoginProps) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isSupabaseConfigured()}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
