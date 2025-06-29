@@ -1,6 +1,6 @@
 import React from 'react';
-import { useLibrary } from '../context/LibraryContext';
 import { useStats } from '../hooks/useStats';
+import { useLibrary } from '../context/LibraryContext';
 import { 
   Book, 
   BookOpen, 
@@ -10,14 +10,20 @@ import {
   IndianRupee,
   CheckCircle,
   TrendingUp,
+  Moon,
+  Sun,
   Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { state } = useLibrary();
   const stats = useStats();
+  const { state, dispatch } = useLibrary();
   const navigate = useNavigate();
+
+  const toggleDarkMode = () => {
+    dispatch({ type: 'TOGGLE_DARK_MODE' });
+  };
 
   const StatCard = ({ 
     title, 
@@ -83,15 +89,28 @@ export default function Dashboard() {
       
       {/* Content */}
       <div className="relative z-10 space-y-8 p-4 sm:p-6 lg:p-8">
-        {/* Welcome Header */}
+        {/* Welcome Header with Theme Toggle */}
         <div className="text-center py-8">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 relative">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleDarkMode}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
+              title={state.darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {state.darkMode ? (
+                <Sun className="h-6 w-6 text-white" />
+              ) : (
+                <Moon className="h-6 w-6 text-white" />
+              )}
+            </button>
+            
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
               Narula Institute of Technology
             </h1>
             <p className="text-xl text-white/90 mb-4">Library Management System</p>
             <p className="text-lg text-white/80">
-              Welcome To The LMS
+              Welcome To The LMS, {state.user?.name || 'NiT'}
             </p>
           </div>
         </div>
@@ -233,41 +252,43 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button 
-              onClick={() => navigate('/books')}
-              className="flex items-center p-4 bg-blue-50/80 dark:bg-blue-900/80 hover:bg-blue-100/80 dark:hover:bg-blue-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
-            >
-              <Book className="h-8 w-8 text-blue-600 mr-3" />
-              <div className="text-left">
-                <p className="font-medium text-gray-900 dark:text-white">Manage Books</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage books</p>
-              </div>
-            </button>
-            <button 
-              onClick={() => navigate('/issue-return')}
-              className="flex items-center p-4 bg-green-50/80 dark:bg-green-900/80 hover:bg-green-100/80 dark:hover:bg-green-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
-            >
-              <BookOpen className="h-8 w-8 text-green-600 mr-3" />
-              <div className="text-left">
-                <p className="font-medium text-gray-900 dark:text-white">Issue Book</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Issue to student</p>
-              </div>
-            </button>
-            <button 
-              onClick={() => navigate('/students')}
-              className="flex items-center p-4 bg-purple-50/80 dark:bg-purple-900/80 hover:bg-purple-100/80 dark:hover:bg-purple-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
-            >
-              <Users className="h-8 w-8 text-purple-600 mr-3" />
-              <div className="text-left">
-                <p className="font-medium text-gray-900 dark:text-white">Manage Students</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage students</p>
-              </div>
-            </button>
+        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+          <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 p-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button 
+                onClick={() => navigate('/books')}
+                className="flex items-center p-4 bg-blue-50/80 dark:bg-blue-900/80 hover:bg-blue-100/80 dark:hover:bg-blue-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
+              >
+                <Book className="h-8 w-8 text-blue-600 mr-3" />
+                <div className="text-left">
+                  <p className="font-medium text-gray-900 dark:text-white">Manage Books</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage books</p>
+                </div>
+              </button>
+              <button 
+                onClick={() => navigate('/issue-return')}
+                className="flex items-center p-4 bg-green-50/80 dark:bg-green-900/80 hover:bg-green-100/80 dark:hover:bg-green-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
+              >
+                <BookOpen className="h-8 w-8 text-green-600 mr-3" />
+                <div className="text-left">
+                  <p className="font-medium text-gray-900 dark:text-white">Issue Book</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Issue to student</p>
+                </div>
+              </button>
+              <button 
+                onClick={() => navigate('/students')}
+                className="flex items-center p-4 bg-purple-50/80 dark:bg-purple-900/80 hover:bg-purple-100/80 dark:hover:bg-purple-800/80 rounded-lg transition-all duration-200 backdrop-blur-sm"
+              >
+                <Users className="h-8 w-8 text-purple-600 mr-3" />
+                <div className="text-left">
+                  <p className="font-medium text-gray-900 dark:text-white">Manage Students</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Add & manage students</p>
+                </div>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

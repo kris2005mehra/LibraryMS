@@ -2,7 +2,6 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  password?: string;
   role: 'admin' | 'librarian' | 'student';
   rollNo?: string;
   department?: string;
@@ -32,8 +31,9 @@ export interface Issue {
   issueDate: string;
   dueDate: string;
   returnDate?: string;
-  status: 'issued' | 'returned' | 'overdue';
   fineAmount?: number;
+  finePaid: boolean;
+  status: 'issued' | 'returned' | 'overdue';
 }
 
 export interface Fine {
@@ -42,8 +42,8 @@ export interface Fine {
   issueId: string;
   amount: number;
   reason: string;
-  paid: boolean;
   date: string;
+  paid: boolean;
   paidDate?: string;
 }
 

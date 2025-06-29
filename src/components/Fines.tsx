@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLibrary } from '../context/LibraryContext';
+import { Fine } from '../types';
 import { Search, IndianRupee, CheckCircle, Clock, Download } from 'lucide-react';
 
 export default function Fines() {
@@ -33,11 +34,18 @@ export default function Fines() {
     const fine = state.fines.find(f => f.id === fineId);
     if (!fine) return;
 
-    const updatedFine = {
+    const updatedFine: Fine = {
       ...fine,
       paid: true,
       paidDate: new Date().toISOString(),
     };
+
+    // Also update the related issue
+    const issue = state.issues.find(i => i.id === fine.issueId);
+    if (issue) {
+      const updatedIssue = { ...issue, finePaid: true };
+      dispatch({ type: 'UPDATE_ISSUE', payload: updatedIssue });
+    }
 
     dispatch({ type: 'UPDATE_FINE', payload: updatedFine });
   };
@@ -74,18 +82,25 @@ export default function Fines() {
     window.URL.revokeObjectURL(url);
   };
 
+  // Check if current user is a student and filter their fines
+  const userFines = state.user?.role === 'student' 
+    ? filteredFines.filter(fine => fine.studentId === state.user?.id)
+    : filteredFines;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fines Management</h1>
-        <button
-          onClick={generateFineReport}
-          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
-        >
-          <Download className="h-5 w-5 mr-2" />
-          Export Report
-        </button>
+        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+          <button
+            onClick={generateFineReport}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+          >
+            <Download className="h-5 w-5 mr-2" />
+            Export Report
+          </button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -128,44 +143,48 @@ export default function Fines() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Search by student name, roll no, or book..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            >
-              <option value="all">All Fines</option>
-              <option value="paid">Paid Fines</option>
-              <option value="unpaid">Unpaid Fines</option>
-            </select>
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-            Showing {filteredFines.length} fines
+      {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="text"
+                placeholder="Search by student name, roll no, or book..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="all">All Fines</option>
+                <option value="paid">Paid Fines</option>
+                <option value="unpaid">Unpaid Fines</option>
+              </select>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+              Showing {userFines.length} fines
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Fines List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">All Fines</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            {state.user?.role === 'student' ? 'My Fines' : 'All Fines'}
+          </h3>
         </div>
         
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {filteredFines.length > 0 ? (
-            filteredFines.map((fine) => {
+          {userFines.length > 0 ? (
+            userFines.map((fine) => {
               const student = state.users.find(u => u.id === fine.studentId);
               const issue = state.issues.find(i => i.id === fine.issueId);
               const book = issue ? state.books.find(b => b.id === issue.bookId) : null;
@@ -190,9 +209,11 @@ export default function Fines() {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        <div>
-                          <span className="font-medium">Student:</span> {student.name} ({student.rollNo})
-                        </div>
+                        {(state.user?.role === 'admin' || state.user?.role === 'librarian') && (
+                          <div>
+                            <span className="font-medium">Student:</span> {student.name} ({student.rollNo})
+                          </div>
+                        )}
                         <div>
                           <span className="font-medium">Amount:</span> ₹{fine.amount}
                         </div>
@@ -211,7 +232,7 @@ export default function Fines() {
                       )}
                     </div>
                     
-                    {!fine.paid && (
+                    {!fine.paid && (state.user?.role === 'admin' || state.user?.role === 'librarian') && (
                       <button
                         onClick={() => handleMarkAsPaid(fine.id)}
                         className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -228,9 +249,11 @@ export default function Fines() {
               <IndianRupee className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No fines found</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'Try adjusting your search criteria.' 
-                  : 'No fines have been recorded yet.'
+                {state.user?.role === 'student' 
+                  ? 'You have no fines at the moment.'
+                  : searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your search criteria.' 
+                    : 'No fines have been recorded yet.'
                 }
               </p>
             </div>

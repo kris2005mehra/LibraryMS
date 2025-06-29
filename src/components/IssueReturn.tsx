@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLibrary } from '../context/LibraryContext';
-import { Issue } from '../types';
+import { Issue, Fine } from '../types';
 import { Search, BookOpen, RotateCcw, Calendar, AlertTriangle } from 'lucide-react';
 
 export default function IssueReturn() {
@@ -43,6 +43,23 @@ export default function IssueReturn() {
       return;
     }
 
+    // Check if student has overdue books or unpaid fines
+    const studentOverdueBooks = state.issues.filter(issue => {
+      if (issue.studentId !== selectedStudent || issue.status !== 'issued') return false;
+      const dueDate = new Date(issue.dueDate);
+      const currentDate = new Date();
+      return dueDate < currentDate;
+    });
+
+    const unpaidFines = state.fines.filter(fine => 
+      fine.studentId === selectedStudent && !fine.paid
+    );
+
+    if (studentOverdueBooks.length > 0 || unpaidFines.length > 0) {
+      alert('Student has overdue books or unpaid fines. Please resolve before issuing new books.');
+      return;
+    }
+
     // Check if book is available
     if (book.stock <= 0) {
       alert('Book is not available');
@@ -60,13 +77,13 @@ export default function IssueReturn() {
       issueDate: issueDate.toISOString(),
       dueDate: dueDate.toISOString(),
       status: 'issued',
+      finePaid: false,
     };
-
-    // Add issue
-    dispatch({ type: 'ADD_ISSUE', payload: newIssue });
 
     // Update book stock
     const updatedBook = { ...book, stock: book.stock - 1 };
+    
+    dispatch({ type: 'ADD_ISSUE', payload: newIssue });
     dispatch({ type: 'UPDATE_BOOK', payload: updatedBook });
 
     // Reset form
@@ -94,29 +111,31 @@ export default function IssueReturn() {
       fineAmount = daysOverdue * 2; // ₹2 per day
     }
 
-    // Update issue
+    // Update issue status
     const updatedIssue: Issue = {
       ...issue,
       status: 'returned',
       returnDate: returnDate.toISOString(),
-      fineAmount,
+      fineAmount: fineAmount,
+      finePaid: fineAmount === 0,
     };
-    dispatch({ type: 'UPDATE_ISSUE', payload: updatedIssue });
 
     // Update book stock
     const updatedBook = { ...book, stock: book.stock + 1 };
+
+    dispatch({ type: 'UPDATE_ISSUE', payload: updatedIssue });
     dispatch({ type: 'UPDATE_BOOK', payload: updatedBook });
 
     // Add fine if applicable
     if (fineAmount > 0) {
-      const newFine = {
+      const newFine: Fine = {
         id: Date.now().toString(),
         studentId: issue.studentId,
         issueId: issueId,
         amount: fineAmount,
         reason: 'Late return fine',
-        paid: false,
         date: returnDate.toISOString(),
+        paid: false,
       };
       dispatch({ type: 'ADD_FINE', payload: newFine });
     }

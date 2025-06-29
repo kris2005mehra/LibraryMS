@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLibrary } from '../context/LibraryContext';
-import { Book } from '../types';
-import { Search, Plus, Edit, Trash2, Filter } from 'lucide-react';
+import { Book as BookType, User } from '../types';
+import { Search, Plus, Edit, Trash2, Eye, Filter } from 'lucide-react';
 
 export default function Books() {
   const { state, dispatch } = useLibrary();
@@ -9,7 +9,7 @@ export default function Books() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedBook, setSelectedBook] = useState<BookType | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [bookForm, setBookForm] = useState({
@@ -25,6 +25,7 @@ export default function Books() {
   });
 
   const categories = [...new Set(state.books.map(book => book.category))];
+  const canEdit = state.user?.role === 'admin' || state.user?.role === 'librarian';
 
   const filteredBooks = state.books.filter(book => {
     const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,7 +44,7 @@ export default function Books() {
       return;
     }
 
-    const newBook: Book = {
+    const newBook: BookType = {
       id: Date.now().toString(),
       ...bookForm,
       stock: bookForm.totalCopies,
@@ -59,13 +60,7 @@ export default function Books() {
     e.preventDefault();
     if (!selectedBook) return;
 
-    // Check for duplicate ISBN (excluding current book)
-    if (state.books.some(book => book.isbn === bookForm.isbn && book.id !== selectedBook.id)) {
-      alert('A book with this ISBN already exists');
-      return;
-    }
-
-    const updatedBook: Book = {
+    const updatedBook: BookType = {
       ...selectedBook,
       ...bookForm,
       stock: selectedBook.stock + (bookForm.totalCopies - selectedBook.totalCopies),
@@ -79,13 +74,13 @@ export default function Books() {
   const handleDeleteBook = () => {
     if (!selectedBook) return;
     
-    // Check if book has active issues
-    const activeIssues = state.issues.filter(issue => 
+    // Check if book is currently issued
+    const isIssued = state.issues.some(issue => 
       issue.bookId === selectedBook.id && issue.status === 'issued'
     );
     
-    if (activeIssues.length > 0) {
-      alert('Cannot delete book with active issues');
+    if (isIssued) {
+      alert('Cannot delete book that is currently issued');
       return;
     }
 
@@ -109,7 +104,7 @@ export default function Books() {
     setSelectedBook(null);
   };
 
-  const openEditModal = (book: Book) => {
+  const openEditModal = (book: BookType) => {
     setSelectedBook(book);
     setBookForm({
       isbn: book.isbn,
@@ -130,13 +125,15 @@ export default function Books() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Books Management</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Book
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Book
+          </button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -217,25 +214,27 @@ export default function Books() {
                 </p>
               )}
 
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => openEditModal(book)}
-                  className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 rounded-lg transition-colors duration-200"
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedBook(book);
-                    setShowDeleteConfirm(true);
-                  }}
-                  className="flex-1 flex items-center justify-center px-3 py-2 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 rounded-lg transition-colors duration-200"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </button>
-              </div>
+              {canEdit && (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => openEditModal(book)}
+                    className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 rounded-lg transition-colors duration-200"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedBook(book);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="flex-1 flex items-center justify-center px-3 py-2 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 rounded-lg transition-colors duration-200"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
