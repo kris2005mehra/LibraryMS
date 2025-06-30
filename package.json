@@ -1,5 +1,5 @@
 {
-  "name": "college-skill-platform",
+  "name": "narula-library-management",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -10,18 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.21.0",
-    "@supabase/supabase-js": "^2.39.0",
-    "@stripe/stripe-js": "^2.4.0",
-    "@stripe/react-stripe-js": "^2.4.0",
-    "tsparticles": "^3.0.3",
-    "@tsparticles/react": "^3.0.0",
-    "@tsparticles/slim": "^3.0.3",
-    "lucide-react": "^0.344.0",
-    "react-hot-toast": "^2.4.1",
-    "date-fns": "^3.0.6"
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
