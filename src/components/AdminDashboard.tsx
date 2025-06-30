@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import { Users, MessageCircle, DollarSign, Star, TrendingUp } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface Stats {
   totalUsers: number
@@ -27,64 +29,6 @@ interface Session {
   student: { name: string }
 }
 
-// Demo data
-const demoUsers: User[] = [
-  {
-    id: '1',
-    name: 'Sarah Chen',
-    email: 'sarah@mit.edu',
-    college: 'MIT',
-    total_sessions: 42,
-    rating: 4.9,
-    created_at: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Alex Rodriguez',
-    email: 'alex@stanford.edu',
-    college: 'Stanford University',
-    total_sessions: 38,
-    rating: 4.8,
-    created_at: '2024-01-20T00:00:00Z'
-  },
-  {
-    id: '3',
-    name: 'Priya Sharma',
-    email: 'priya@iitdelhi.ac.in',
-    college: 'IIT Delhi',
-    total_sessions: 55,
-    rating: 4.9,
-    created_at: '2024-01-25T00:00:00Z'
-  }
-]
-
-const demoSessions: Session[] = [
-  {
-    id: '1',
-    amount: 35,
-    status: 'completed',
-    created_at: '2024-01-30T10:00:00Z',
-    mentor: { name: 'Sarah Chen' },
-    student: { name: 'Demo Student' }
-  },
-  {
-    id: '2',
-    amount: 30,
-    status: 'completed',
-    created_at: '2024-01-29T14:00:00Z',
-    mentor: { name: 'Alex Rodriguez' },
-    student: { name: 'John Doe' }
-  },
-  {
-    id: '3',
-    amount: 40,
-    status: 'active',
-    created_at: '2024-01-30T16:00:00Z',
-    mentor: { name: 'Priya Sharma' },
-    student: { name: 'Jane Smith' }
-  }
-]
-
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
@@ -92,24 +36,56 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     averageRating: 0
   })
-  const [users] = useState<User[]>(demoUsers)
-  const [sessions] = useState<Session[]>(demoSessions)
+  const [users, setUsers] = useState<User[]>([])
+  const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Calculate stats from demo data
-    const totalRevenue = demoSessions.reduce((sum, session) => sum + session.amount, 0)
-    const averageRating = demoUsers.reduce((sum, user) => sum + user.rating, 0) / demoUsers.length
-
-    setStats({
-      totalUsers: demoUsers.length,
-      totalSessions: demoSessions.length,
-      totalRevenue,
-      averageRating
-    })
-
-    setLoading(false)
+    fetchData()
   }, [])
+
+  const fetchData = async () => {
+    try {
+      // Fetch users
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (usersError) throw usersError
+
+      // Fetch sessions
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('sessions')
+        .select(`
+          *,
+          mentor:profiles!sessions_mentor_id_fkey(name),
+          student:profiles!sessions_student_id_fkey(name)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (sessionsError) throw sessionsError
+
+      setUsers(usersData || [])
+      setSessions(sessionsData || [])
+
+      // Calculate stats
+      const totalRevenue = sessionsData?.reduce((sum, session) => sum + session.amount, 0) || 0
+      const averageRating = usersData?.reduce((sum, user) => sum + user.rating, 0) / (usersData?.length || 1) || 0
+
+      setStats({
+        totalUsers: usersData?.length || 0,
+        totalSessions: sessionsData?.length || 0,
+        totalRevenue,
+        averageRating
+      })
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      toast.error('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (

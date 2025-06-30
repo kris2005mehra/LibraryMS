@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './components/Login'
+import ProfileSetup from './components/ProfileSetup'
 import Dashboard from './components/Dashboard'
 import Booking from './components/Booking'
 import Chat from './components/Chat'
@@ -21,9 +22,12 @@ function AppContent() {
     )
   }
 
-  // Show login page if no user
   if (!user) {
     return <Login />
+  }
+
+  if (!profile) {
+    return <ProfileSetup />
   }
 
   return (
@@ -48,7 +52,7 @@ function AppContent() {
               >
                 Profile
               </a>
-              {profile?.email === 'admin@skillshare.com' && (
+              {profile.email === 'admin@skillshare.com' && (
                 <a
                   href="/admin"
                   className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"

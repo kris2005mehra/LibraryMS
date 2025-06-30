@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { Send, ArrowLeft, Clock, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Message {
   id: string
+  session_id: string
   sender_id: string
   content: string
   created_at: string
-  sender_name: string
 }
 
 interface Session {
@@ -42,53 +43,9 @@ export default function Chat() {
 
   useEffect(() => {
     if (sessionId) {
-      // Create demo session data
-      const demoSession: Session = {
-        id: sessionId,
-        mentor_id: 'mentor-1',
-        student_id: 'demo-user-1',
-        amount: 35,
-        status: 'active',
-        started_at: new Date().toISOString(),
-        ended_at: null,
-        mentor: {
-          name: 'Sarah Chen',
-          profile_image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
-        },
-        student: {
-          name: 'Demo Student',
-          profile_image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
-        }
-      }
-
-      // Create demo messages
-      const demoMessages: Message[] = [
-        {
-          id: '1',
-          sender_id: 'mentor-1',
-          content: 'Hi! Welcome to our session. What would you like to learn today?',
-          created_at: new Date(Date.now() - 300000).toISOString(),
-          sender_name: 'Sarah Chen'
-        },
-        {
-          id: '2',
-          sender_id: 'demo-user-1',
-          content: 'Hello! I\'m interested in learning React hooks and state management.',
-          created_at: new Date(Date.now() - 240000).toISOString(),
-          sender_name: 'Demo Student'
-        },
-        {
-          id: '3',
-          sender_id: 'mentor-1',
-          content: 'Great choice! Let\'s start with useState and useEffect. These are the most commonly used hooks.',
-          created_at: new Date(Date.now() - 180000).toISOString(),
-          sender_name: 'Sarah Chen'
-        }
-      ]
-
-      setSession(demoSession)
-      setMessages(demoMessages)
-      setLoading(false)
+      fetchSession()
+      fetchMessages()
+      subscribeToMessages()
     }
   }, [sessionId])
 
@@ -96,40 +53,104 @@ export default function Chat() {
     scrollToBottom()
   }, [messages])
 
+  const fetchSession = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select(`
+          *,
+          mentor:profiles!sessions_mentor_id_fkey(name, profile_image),
+          student:profiles!sessions_student_id_fkey(name, profile_image)
+        `)
+        .eq('id', sessionId)
+        .single()
+
+      if (error) throw error
+      setSession(data)
+    } catch (error) {
+      console.error('Error fetching session:', error)
+      toast.error('Failed to load session')
+      navigate('/dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      setMessages(data || [])
+    } catch (error) {
+      console.error('Error fetching messages:', error)
+    }
+  }
+
+  const subscribeToMessages = () => {
+    const subscription = supabase
+      .channel(`messages:session_id=eq.${sessionId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `session_id=eq.${sessionId}`
+      }, (payload) => {
+        setMessages(prev => [...prev, payload.new as Message])
+      })
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!newMessage.trim() || !user || !sessionId) return
 
-    const message: Message = {
-      id: Date.now().toString(),
-      sender_id: user.id,
-      content: newMessage.trim(),
-      created_at: new Date().toISOString(),
-      sender_name: 'Demo Student'
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          session_id: sessionId,
+          sender_id: user.id,
+          content: newMessage.trim()
+        })
+
+      if (error) throw error
+      setNewMessage('')
+    } catch (error) {
+      console.error('Error sending message:', error)
+      toast.error('Failed to send message')
     }
-
-    setMessages(prev => [...prev, message])
-    setNewMessage('')
-
-    // Simulate mentor response after a delay
-    setTimeout(() => {
-      const mentorResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        sender_id: 'mentor-1',
-        content: 'That\'s a great question! Let me explain that concept...',
-        created_at: new Date().toISOString(),
-        sender_name: 'Sarah Chen'
-      }
-      setMessages(prev => [...prev, mentorResponse])
-    }, 2000)
   }
 
   const endSession = async () => {
     if (!sessionId) return
 
-    toast.success('Session ended successfully')
-    navigate(`/rating/${sessionId}`)
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          status: 'completed',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+
+      if (error) throw error
+      
+      toast.success('Session ended successfully')
+      navigate(`/rating/${sessionId}`)
+    } catch (error) {
+      console.error('Error ending session:', error)
+      toast.error('Failed to end session')
+    }
   }
 
   const scrollToBottom = () => {
