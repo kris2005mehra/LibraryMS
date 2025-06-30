@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import ParticleBackground from './ParticleBackground'
 import MentorCard from './MentorCard'
 import { Search, Filter, Star, Users, MessageCircle } from 'lucide-react'
-import toast from 'react-hot-toast'
 
 interface Mentor {
   id: string
@@ -24,40 +22,93 @@ const SKILL_FILTERS = [
   'Data Science', 'Web Development', 'Graphic Design', 'Digital Marketing'
 ]
 
+// Demo mentors data
+const demoMentors: Mentor[] = [
+  {
+    id: 'mentor-1',
+    name: 'Sarah Chen',
+    college: 'MIT',
+    bio: 'Full-stack developer with 3 years of experience. I specialize in React, Node.js, and modern web development practices.',
+    profile_image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    skills: ['JavaScript', 'React', 'Node.js', 'Python'],
+    hourly_rate: 35,
+    is_available: true,
+    rating: 4.9,
+    total_sessions: 42
+  },
+  {
+    id: 'mentor-2',
+    name: 'Alex Rodriguez',
+    college: 'Stanford University',
+    bio: 'UI/UX Designer passionate about creating beautiful and functional user experiences. Expert in Figma and design systems.',
+    profile_image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    skills: ['UI/UX Design', 'Figma', 'Graphic Design', 'Prototyping'],
+    hourly_rate: 30,
+    is_available: true,
+    rating: 4.8,
+    total_sessions: 38
+  },
+  {
+    id: 'mentor-3',
+    name: 'Priya Sharma',
+    college: 'IIT Delhi',
+    bio: 'Data Science enthusiast with expertise in machine learning and Python. I love helping students understand complex algorithms.',
+    profile_image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    skills: ['Python', 'Data Science', 'Machine Learning', 'Statistics'],
+    hourly_rate: 40,
+    is_available: true,
+    rating: 4.9,
+    total_sessions: 55
+  },
+  {
+    id: 'mentor-4',
+    name: 'David Kim',
+    college: 'UC Berkeley',
+    bio: 'Content writer and digital marketer. I help students improve their writing skills and understand modern marketing strategies.',
+    profile_image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    skills: ['Content Writing', 'Digital Marketing', 'SEO', 'Social Media'],
+    hourly_rate: 25,
+    is_available: false,
+    rating: 4.7,
+    total_sessions: 29
+  },
+  {
+    id: 'mentor-5',
+    name: 'Emma Wilson',
+    college: 'Harvard University',
+    bio: 'Mobile app developer specializing in React Native and Flutter. I enjoy teaching mobile development concepts.',
+    profile_image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    skills: ['React Native', 'Flutter', 'Mobile Development', 'JavaScript'],
+    hourly_rate: 45,
+    is_available: true,
+    rating: 4.8,
+    total_sessions: 33
+  },
+  {
+    id: 'mentor-6',
+    name: 'Raj Patel',
+    college: 'Georgia Tech',
+    bio: 'Backend engineer with expertise in system design and cloud technologies. I help students understand scalable architecture.',
+    profile_image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+    skills: ['System Design', 'AWS', 'Backend Development', 'Microservices'],
+    hourly_rate: 50,
+    is_available: true,
+    rating: 4.9,
+    total_sessions: 47
+  }
+]
+
 export default function Dashboard() {
   const { profile } = useAuth()
-  const [mentors, setMentors] = useState<Mentor[]>([])
-  const [filteredMentors, setFilteredMentors] = useState<Mentor[]>([])
-  const [loading, setLoading] = useState(true)
+  const [mentors] = useState<Mentor[]>(demoMentors)
+  const [filteredMentors, setFilteredMentors] = useState<Mentor[]>(demoMentors)
+  const [loading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSkill, setSelectedSkill] = useState('All')
 
   useEffect(() => {
-    fetchMentors()
-  }, [])
-
-  useEffect(() => {
     filterMentors()
   }, [mentors, searchTerm, selectedSkill])
-
-  const fetchMentors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('is_available', true)
-        .neq('id', profile?.id || '')
-        .order('rating', { ascending: false })
-
-      if (error) throw error
-      setMentors(data || [])
-    } catch (error) {
-      console.error('Error fetching mentors:', error)
-      toast.error('Failed to load mentors')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const filterMentors = () => {
     let filtered = mentors
@@ -104,7 +155,7 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center space-x-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{mentors.length}</div>
+                  <div className="text-2xl font-bold text-blue-600">{mentors.filter(m => m.is_available).length}</div>
                   <div className="text-sm text-gray-500">Available Mentors</div>
                 </div>
                 <div className="text-center">

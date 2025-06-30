@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import { Star, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -28,31 +27,22 @@ export default function Rating() {
 
   useEffect(() => {
     if (sessionId) {
-      fetchSession()
-    }
-  }, [sessionId])
+      // Create demo session data
+      const demoSession: Session = {
+        id: sessionId,
+        mentor_id: 'mentor-1',
+        student_id: 'demo-user-1',
+        amount: 35,
+        mentor: {
+          name: 'Sarah Chen',
+          profile_image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+        }
+      }
 
-  const fetchSession = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select(`
-          *,
-          mentor:profiles!sessions_mentor_id_fkey(name, profile_image)
-        `)
-        .eq('id', sessionId)
-        .single()
-
-      if (error) throw error
-      setSession(data)
-    } catch (error) {
-      console.error('Error fetching session:', error)
-      toast.error('Failed to load session')
-      navigate('/dashboard')
-    } finally {
+      setSession(demoSession)
       setLoading(false)
     }
-  }
+  }, [sessionId])
 
   const submitRating = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,48 +56,11 @@ export default function Rating() {
 
     setSubmitting(true)
 
-    try {
-      // Submit rating
-      const { error: ratingError } = await supabase
-        .from('ratings')
-        .insert({
-          session_id: session.id,
-          mentor_id: session.mentor_id,
-          student_id: user.id,
-          rating,
-          feedback: feedback.trim() || null
-        })
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
-      if (ratingError) throw ratingError
-
-      // Update mentor's rating
-      const { data: ratings, error: ratingsError } = await supabase
-        .from('ratings')
-        .select('rating')
-        .eq('mentor_id', session.mentor_id)
-
-      if (ratingsError) throw ratingsError
-
-      const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          rating: avgRating,
-          total_sessions: ratings.length
-        })
-        .eq('id', session.mentor_id)
-
-      if (updateError) throw updateError
-
-      toast.success('Thank you for your feedback!')
-      navigate('/dashboard')
-    } catch (error) {
-      console.error('Error submitting rating:', error)
-      toast.error('Failed to submit rating')
-    } finally {
-      setSubmitting(false)
-    }
+    toast.success('Thank you for your feedback!')
+    navigate('/dashboard')
   }
 
   if (loading) {

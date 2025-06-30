@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import { Elements } from '@stripe/react-stripe-js'
 import { stripePromise } from '../lib/stripe'
 import PaymentForm from './PaymentForm'
@@ -20,6 +19,76 @@ interface Mentor {
   total_sessions: number
 }
 
+// Demo mentors data (same as Dashboard)
+const demoMentors: Mentor[] = [
+  {
+    id: 'mentor-1',
+    name: 'Sarah Chen',
+    college: 'MIT',
+    bio: 'Full-stack developer with 3 years of experience. I specialize in React, Node.js, and modern web development practices.',
+    profile_image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    skills: ['JavaScript', 'React', 'Node.js', 'Python'],
+    hourly_rate: 35,
+    rating: 4.9,
+    total_sessions: 42
+  },
+  {
+    id: 'mentor-2',
+    name: 'Alex Rodriguez',
+    college: 'Stanford University',
+    bio: 'UI/UX Designer passionate about creating beautiful and functional user experiences. Expert in Figma and design systems.',
+    profile_image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    skills: ['UI/UX Design', 'Figma', 'Graphic Design', 'Prototyping'],
+    hourly_rate: 30,
+    rating: 4.8,
+    total_sessions: 38
+  },
+  {
+    id: 'mentor-3',
+    name: 'Priya Sharma',
+    college: 'IIT Delhi',
+    bio: 'Data Science enthusiast with expertise in machine learning and Python. I love helping students understand complex algorithms.',
+    profile_image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    skills: ['Python', 'Data Science', 'Machine Learning', 'Statistics'],
+    hourly_rate: 40,
+    rating: 4.9,
+    total_sessions: 55
+  },
+  {
+    id: 'mentor-4',
+    name: 'David Kim',
+    college: 'UC Berkeley',
+    bio: 'Content writer and digital marketer. I help students improve their writing skills and understand modern marketing strategies.',
+    profile_image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    skills: ['Content Writing', 'Digital Marketing', 'SEO', 'Social Media'],
+    hourly_rate: 25,
+    rating: 4.7,
+    total_sessions: 29
+  },
+  {
+    id: 'mentor-5',
+    name: 'Emma Wilson',
+    college: 'Harvard University',
+    bio: 'Mobile app developer specializing in React Native and Flutter. I enjoy teaching mobile development concepts.',
+    profile_image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    skills: ['React Native', 'Flutter', 'Mobile Development', 'JavaScript'],
+    hourly_rate: 45,
+    rating: 4.8,
+    total_sessions: 33
+  },
+  {
+    id: 'mentor-6',
+    name: 'Raj Patel',
+    college: 'Georgia Tech',
+    bio: 'Backend engineer with expertise in system design and cloud technologies. I help students understand scalable architecture.',
+    profile_image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+    skills: ['System Design', 'AWS', 'Backend Development', 'Microservices'],
+    hourly_rate: 50,
+    rating: 4.9,
+    total_sessions: 47
+  }
+]
+
 export default function Booking() {
   const { mentorId } = useParams<{ mentorId: string }>()
   const { user } = useAuth()
@@ -30,55 +99,26 @@ export default function Booking() {
 
   useEffect(() => {
     if (mentorId) {
-      fetchMentor()
-    }
-  }, [mentorId])
-
-  const fetchMentor = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', mentorId)
-        .single()
-
-      if (error) throw error
-      setMentor(data)
-    } catch (error) {
-      console.error('Error fetching mentor:', error)
-      toast.error('Failed to load mentor details')
-      navigate('/dashboard')
-    } finally {
+      // Find mentor from demo data
+      const foundMentor = demoMentors.find(m => m.id === mentorId)
+      if (foundMentor) {
+        setMentor(foundMentor)
+      } else {
+        toast.error('Mentor not found')
+        navigate('/dashboard')
+      }
       setLoading(false)
     }
-  }
+  }, [mentorId, navigate])
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     if (!mentor || !user) return
 
-    try {
-      // Create session record
-      const { data: session, error } = await supabase
-        .from('sessions')
-        .insert({
-          mentor_id: mentor.id,
-          student_id: user.id,
-          amount: mentor.hourly_rate * sessionDuration,
-          status: 'active',
-          stripe_payment_intent_id: paymentIntentId,
-          started_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      toast.success('Payment successful! Redirecting to chat...')
-      navigate(`/chat/${session.id}`)
-    } catch (error) {
-      console.error('Error creating session:', error)
-      toast.error('Payment successful but failed to create session')
-    }
+    // Generate a demo session ID
+    const sessionId = `session-${Date.now()}`
+    
+    toast.success('Payment successful! Redirecting to chat...')
+    navigate(`/chat/${sessionId}`)
   }
 
   if (loading) {

@@ -1,7 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import toast from 'react-hot-toast'
+import React, { createContext, useContext, useState, ReactNode } from 'react'
 
 interface Profile {
   id: string
@@ -20,116 +17,45 @@ interface Profile {
 }
 
 interface AuthContextType {
-  user: User | null
+  user: { id: string } | null
   profile: Profile | null
   loading: boolean
-  signInWithGoogle: () => Promise<void>
-  signOut: () => Promise<void>
   updateProfile: (updates: Partial<Profile>) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+// Demo user profile
+const demoProfile: Profile = {
+  id: 'demo-user-1',
+  email: 'demo@skillshare.com',
+  name: 'Demo Student',
+  college: 'Demo University',
+  bio: 'I am a demo student exploring the SkillShare platform. I love learning new technologies and helping others!',
+  profile_image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+  skills: ['JavaScript', 'React', 'Python', 'UI/UX Design'],
+  hourly_rate: 25,
+  is_available: true,
+  rating: 4.8,
+  total_sessions: 15,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        } else {
-          setProfile(null)
-          setLoading(false)
-        }
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        throw error
-      }
-
-      setProfile(data)
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      toast.error('Failed to load profile')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const signInWithGoogle = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/profile-setup`
-        }
-      })
-      if (error) throw error
-    } catch (error: any) {
-      toast.error(error.message)
-    }
-  }
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      toast.success('Signed out successfully')
-    } catch (error: any) {
-      toast.error(error.message)
-    }
-  }
+  const [user] = useState({ id: 'demo-user-1' })
+  const [profile, setProfile] = useState<Profile>(demoProfile)
+  const [loading] = useState(false)
 
   const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) return
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email!,
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setProfile(data)
-      toast.success('Profile updated successfully')
-    } catch (error: any) {
-      toast.error(error.message)
-      throw error
-    }
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    setProfile(prev => ({
+      ...prev,
+      ...updates,
+      updated_at: new Date().toISOString()
+    }))
   }
 
   return (
@@ -137,8 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       loading,
-      signInWithGoogle,
-      signOut,
       updateProfile
     }}>
       {children}
