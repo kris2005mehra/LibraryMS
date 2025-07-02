@@ -29,6 +29,11 @@ export default function Layout({ children }: LayoutProps) {
     dispatch({ type: 'TOGGLE_DARK_MODE' });
   };
 
+  const handleLogout = () => {
+    dispatch({ type: 'SET_USER', payload: null });
+    navigate('/login');
+  };
+
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: ['admin', 'librarian', 'student'] },
     { name: 'Books', href: '/books', icon: Book, roles: ['admin', 'librarian', 'student'] },
@@ -75,6 +80,17 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
               ))}
             </nav>
+            
+            {/* Mobile Logout Button */}
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center px-2 py-2 text-base font-medium rounded-md text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              >
+                <LogOut className="mr-4 h-6 w-6" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
 
@@ -101,6 +117,17 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 ))}
               </nav>
+              
+              {/* Desktop Logout Button */}
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                >
+                  <LogOut className="mr-3 h-6 w-6" />
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </div>
