@@ -18,13 +18,13 @@
 
 ## 📸 Screenshots
 
-<img width="1452" alt="Screenshot 2025-06-14 at 7 08 16 PM" src="https://github.com/user-attachments/assets/843ebc3f-bf58-4a18-90d1-dc26c073fa9d" />
+<img width="1450" alt="Screenshot 2025-06-14 at 7 08 16 PM" src="https://github.com/user-attachments/assets/843ebc3f-bf58-4a18-90d1-dc26c073fa9d" />
 
-<img width="1465" alt="Screenshot 2025-06-14 at 7 08 41 PM" src="https://github.com/user-attachments/assets/bea8fb85-b296-4d14-90c3-8a3df56cbbe8" />
+<img width="1450" alt="Screenshot 2025-06-14 at 7 08 41 PM" src="https://github.com/user-attachments/assets/bea8fb85-b296-4d14-90c3-8a3df56cbbe8" />
 
-<img width="1453" alt="Screenshot 2025-06-14 at 7 08 58 PM" src="https://github.com/user-attachments/assets/6eb9afde-a339-4fea-8e8a-9d6430c5ef64" />
+<img width="1450" alt="Screenshot 2025-06-14 at 7 08 58 PM" src="https://github.com/user-attachments/assets/6eb9afde-a339-4fea-8e8a-9d6430c5ef64" />
 
-<img width="1444" alt="Screenshot 2025-06-14 at 7 09 39 PM" src="https://github.com/user-attachments/assets/df990ebe-deb3-435b-a9b7-56a5487d70f7" />
+<img width="1450" alt="Screenshot 2025-06-14 at 7 09 39 PM" src="https://github.com/user-attachments/assets/df990ebe-deb3-435b-a9b7-56a5487d70f7" />
 
 ---
 
@@ -75,6 +75,9 @@ npm run dev
 ```bash
 npm run build
 ```
+### 🌱 Deployed Project
+https://aesthetic-madeleine-ce3680.netlify.app
+
 ## ✅ Conclusion
 
 LibraryMS is more than just a project—it's a step toward building real-world, scalable solutions with modern technologies. Whether you're a developer looking to contribute, or someone who needs a lightweight and customizable library system, LibraryMS offers a solid foundation. Stay tuned for more updates as this project grows in features and functionality.
